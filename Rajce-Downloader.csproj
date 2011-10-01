@@ -8,7 +8,7 @@
     <ProjectGuid>{605C32F4-5FD5-4FD3-93B7-25BCCD5FB8B7}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Rajce_Downloader</RootNamespace>
+    <RootNamespace>LH.Apps.RajceDownloader</RootNamespace>
     <AssemblyName>Rajce-Downloader</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -64,6 +64,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

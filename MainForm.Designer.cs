@@ -1,4 +1,4 @@
-﻿namespace Rajce_Downloader
+﻿namespace LH.Apps.RajceDownloader
 {
     partial class MainForm
     {

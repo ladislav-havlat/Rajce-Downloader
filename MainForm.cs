@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace Rajce_Downloader
+namespace LH.Apps.RajceDownloader
 {
     public partial class MainForm : Form
     {
