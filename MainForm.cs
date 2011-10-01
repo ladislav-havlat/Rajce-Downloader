@@ -161,5 +161,23 @@ namespace LH.Apps.RajceDownloader
             PageParser pp = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
             pp.BeginParse();
         }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            Regex reg = new Regex(@"var photos\s*=\s*\[(?<xx>\s*\{.*\}\s*)\]", RegexOptions.Singleline);
+            string s = "sfas daf var photos = [  {aa  }, {aaaaa}, {aaaa}] fasfawegaw aagw";
+
+            //string s = "var photos = [\r\n" +
+            //"	{ photoID: \"409450045\", date: \"2011-09-25 16:55:48\", name: \"\", isVideo: false, desc: \"\", info: \"KIF_7145.JPG | fotoaparát: KYOCERA, Finecam M410R | datum: 25.09.2011 16:55:48 | čas: 1/1401 s | clona: F4.0 | ohnisko: 11.2 mm | ISO: 100\", fileName: \"KIF_7145.jpg\", width: 1200, height: 900 }];\"";
+            //" { photoID: \"409450045\", date: \"2011-09-25 16:55:48\", name: \"\", isVideo: false, desc: \"\", }];\"";
+
+
+
+            Match match = reg.Match(s);
+            foreach (Capture c in match.Groups[1].Captures)
+                MessageBox.Show(c.Value);
+
+            MessageBox.Show(match.ToString());
+        }
     }
 }

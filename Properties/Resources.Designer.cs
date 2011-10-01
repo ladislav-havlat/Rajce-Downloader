@@ -70,6 +70,33 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to fileName\s*:\s*&quot;(?&lt;filename&gt;.*)&quot;.
+        /// </summary>
+        internal static string Parser_FileRegex {
+            get {
+                return ResourceManager.GetString("Parser_FileRegex", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to var photos\s*=\s*\[\s*(?&lt;photos&gt;\{.*\})\s*\].
+        /// </summary>
+        internal static string Parser_PhotosRegex {
+            get {
+                return ResourceManager.GetString("Parser_PhotosRegex", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}images/{1}.
+        /// </summary>
+        internal static string Parser_PhotoURL {
+            get {
+                return ResourceManager.GetString("Parser_PhotoURL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to &lt;div id=&quot;photoList&quot;&gt;.
         /// </summary>
         internal static string Parser_StartTag {

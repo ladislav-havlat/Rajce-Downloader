@@ -51,6 +51,8 @@ namespace LH.Apps.RajceDownloader.Engine
         }
 
         #region Static fields
+        private static Regex s_fileRegex;
+        private static Regex s_photosRegex;
         private static Regex s_storageRegex;
 
         /// <summary>
@@ -58,6 +60,13 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         static PageParser()
         {
+            s_fileRegex = new Regex(Properties.Resources.Parser_FileRegex,
+                RegexOptions.IgnoreCase | RegexOptions.Compiled); 
+            //file name regex must not be single line, the records are separated by \n
+
+            s_photosRegex = new Regex(Properties.Resources.Parser_PhotosRegex,
+                RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
+
             s_storageRegex = new Regex(Properties.Resources.Parser_StorageRegex, 
                 RegexOptions.IgnoreCase | RegexOptions.Compiled);
         }
@@ -185,9 +194,20 @@ namespace LH.Apps.RajceDownloader.Engine
             pageData = null;
 
             Match storageMatch = s_storageRegex.Match(data);
-            string storage = storageMatch.Groups[1].Captures[0].Value;
+            string storage = storageMatch.Groups[1].Value;
+            if (!storage.EndsWith("/"))
+                storage += "/";
 
-            MessageBox.Show(storage);
+            Match photosMatch = s_photosRegex.Match(data);
+            string photos = photosMatch.Groups[1].Value;
+
+            Match fileMatch = s_fileRegex.Match(photos);
+            while (fileMatch.Success)
+            {
+                string fileName = fileMatch.Groups[1].Value;
+                photosURLs.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
+                fileMatch = fileMatch.NextMatch();
+            }
         }
     }
 }

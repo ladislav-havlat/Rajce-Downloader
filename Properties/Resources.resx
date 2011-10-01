@@ -120,6 +120,15 @@
   <data name="Parser_EndTag" xml:space="preserve">
     <value />
   </data>
+  <data name="Parser_FileRegex" xml:space="preserve">
+    <value>fileName\s*:\s*"(?&lt;filename&gt;.*)"</value>
+  </data>
+  <data name="Parser_PhotosRegex" xml:space="preserve">
+    <value>var photos\s*=\s*\[\s*(?&lt;photos&gt;\{.*\})\s*\]</value>
+  </data>
+  <data name="Parser_PhotoURL" xml:space="preserve">
+    <value>{0}images/{1}</value>
+  </data>
   <data name="Parser_StartTag" xml:space="preserve">
     <value>&lt;div id="photoList"&gt;</value>
   </data>
