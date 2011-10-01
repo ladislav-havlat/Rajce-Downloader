@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using LH.Apps.RajceDownloader.Engine;
+using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader
 {
@@ -157,7 +158,7 @@ namespace LH.Apps.RajceDownloader
 
         private void button1_Click(object sender, EventArgs e)
         {
-            PageParser pp = new PageParser("http://www.google.com/");
+            PageParser pp = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
             pp.BeginParse();
         }
     }

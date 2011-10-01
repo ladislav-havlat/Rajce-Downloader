@@ -61,6 +61,33 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string Parser_EndTag {
+            get {
+                return ResourceManager.GetString("Parser_EndTag", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;div id=&quot;photoList&quot;&gt;.
+        /// </summary>
+        internal static string Parser_StartTag {
+            get {
+                return ResourceManager.GetString("Parser_StartTag", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to var storage\s*=\s*&quot;(?&lt;storage&gt;.*)&quot;\s*;.
+        /// </summary>
+        internal static string Parser_StorageRegex {
+            get {
+                return ResourceManager.GetString("Parser_StorageRegex", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Stahuji stránku alba....
         /// </summary>
         internal static string Status_DownloadingPage {

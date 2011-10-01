@@ -6,6 +6,9 @@ using System.Net;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader.Engine
 {
@@ -47,7 +50,21 @@ namespace LH.Apps.RajceDownloader.Engine
             }
         }
 
+        #region Static fields
+        private static Regex s_storageRegex;
+
+        /// <summary>
+        /// Initializes the static fields of PageParser.
+        /// </summary>
+        static PageParser()
+        {
+            s_storageRegex = new Regex(Properties.Resources.Parser_StorageRegex, 
+                RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        }
+        #endregion
+
         private MemoryStream pageData;
+        private Encoding pageDataEncoding;
         private string pageURL;
         private List<string> photosURLs;
 
@@ -68,6 +85,7 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             photosURLs.Clear();
             pageData = null;
+            pageDataEncoding = null;
 
             DownloadState state = new DownloadState();
             state.Request = HttpWebRequest.Create(pageURL);
@@ -138,11 +156,16 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                     else
                     {
+                        HttpWebResponse httpResponse = state.Response as HttpWebResponse;
+                        if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
+                            pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
+                        if (pageDataEncoding == null)
+                            pageDataEncoding = Encoding.UTF8;
+                        
                         state.Response.Close();
                         Program.StatusSink.EndOperation();
 
-                        MethodInvoker pageReadyDelegate = new MethodInvoker(PageReady);
-                        pageReadyDelegate.BeginInvoke(null, null);
+                        PageReady();
                     }
                 }
             }
@@ -157,11 +180,14 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         private void PageReady()
         {
-            byte[] data = pageData.ToArray();
-            using (FileStream fs = new FileStream("test", FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                fs.Write(data, 0, data.Length);
-            }
+            pageData.Position = 0;
+            string data = pageDataEncoding.GetString(pageData.ToArray());
+            pageData = null;
+
+            Match storageMatch = s_storageRegex.Match(data);
+            string storage = storageMatch.Groups[1].Captures[0].Value;
+
+            MessageBox.Show(storage);
         }
     }
 }
