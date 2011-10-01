@@ -59,5 +59,14 @@ namespace LH.Apps.RajceDownloader.Properties {
                 resourceCulture = value;
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Připraven.
+        /// </summary>
+        internal static string Status_Ready {
+            get {
+                return ResourceManager.GetString("Status_Ready", resourceCulture);
+            }
+        }
     }
 }

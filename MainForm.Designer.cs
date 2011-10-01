@@ -28,12 +28,56 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.toolbarStrip = new System.Windows.Forms.StatusStrip();
+            this.statusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.progessBar = new System.Windows.Forms.ToolStripProgressBar();
+            this.toolbarStrip.SuspendLayout();
+            this.SuspendLayout();
+            // 
+            // toolbarStrip
+            // 
+            this.toolbarStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.statusLabel,
+            this.progessBar});
+            this.toolbarStrip.Location = new System.Drawing.Point(0, 240);
+            this.toolbarStrip.Name = "toolbarStrip";
+            this.toolbarStrip.Size = new System.Drawing.Size(490, 22);
+            this.toolbarStrip.TabIndex = 0;
+            this.toolbarStrip.Text = "statusStrip1";
+            // 
+            // statusLabel
+            // 
+            this.statusLabel.Name = "statusLabel";
+            this.statusLabel.Size = new System.Drawing.Size(475, 17);
+            this.statusLabel.Spring = true;
+            this.statusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // progessBar
+            // 
+            this.progessBar.Name = "progessBar";
+            this.progessBar.Size = new System.Drawing.Size(100, 16);
+            this.progessBar.Visible = false;
+            // 
+            // MainForm
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(490, 262);
+            this.Controls.Add(this.toolbarStrip);
+            this.Name = "MainForm";
             this.Text = "Form1";
+            this.toolbarStrip.ResumeLayout(false);
+            this.toolbarStrip.PerformLayout();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
         }
 
         #endregion
+
+        private System.Windows.Forms.StatusStrip toolbarStrip;
+        private System.Windows.Forms.ToolStripStatusLabel statusLabel;
+        private System.Windows.Forms.ToolStripProgressBar progessBar;
     }
 }
 
