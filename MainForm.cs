@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using LH.Apps.RajceDownloader.Engine;
 
 namespace LH.Apps.RajceDownloader
 {
@@ -18,47 +19,146 @@ namespace LH.Apps.RajceDownloader
         }
 
         #region IStatusSink Members
+        /// <summary>
+        /// Displays the progress bar, sets its bounds, its position to the beginning and sets the status bar
+        /// text. Combines SetProgressBarBounds, SetProgressBarPos and SetStatusText into one operation.
+        /// </summary>
+        /// <param name="Min">Minimal progress bar position.</param>
+        /// <param name="Max">Maximal progress bar position.</param>
+        /// <param name="StatusText">The text to be displayed. If null, "Ready" status shall be displayed.</param>
         public void BeginOperation(int Min, int Max, string StatusText)
         {
-            SetProgressBarBounds(Min, Max);
-            SetStatusText(StatusText);
-            ShowProgressBar(true);
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                //optimization: the calls are already internally synchronized, but this performs all 
+                //the operations doing one sync call only
+                SetStatusText(StatusText);
+                SetProgressBarBounds(Min, Max);
+                SetProgressBarPos(Min);
+                ShowProgressBar(true);
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
 
+        /// <summary>
+        /// Hides the progress bar and sets the status bar's text to "Ready".
+        /// </summary>
         public void EndOperation()
         {
-            ShowProgressBar(false);
-            SetStatusText(null);
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                //optimization: the calls are already internally synchronized, but this performs all 
+                //the operations doing one sync call only
+                ShowProgressBar(false);
+                SetStatusText(null);
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
 
+        /// <summary>
+        /// Sets the progress bar's bounds.
+        /// </summary>
+        /// <param name="Min">Minimal progress bar position.</param>
+        /// <param name="Max">Maximal progress bar position.</param>
         public void SetProgressBarBounds(int Min, int Max)
         {
-            progessBar.Minimum = Min;
-            progessBar.Maximum = Max;
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                progressBar.Minimum = Min;
+                progressBar.Maximum = Max;
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
 
+        /// <summary>
+        /// Sets the progress bar's position.
+        /// </summary>
+        /// <param name="Pos">Desired position of the progress bar.</param>
         public void SetProgressBarPos(int Pos)
         {
-            progessBar.Value = Pos;
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                progressBar.Value = Pos;
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
 
+        /// <summary>
+        /// Sets the text on a generic status bar.
+        /// </summary>
+        /// <param name="StatusText">The text to be displayed. If null, "Ready" status shall be displayed.</param>
         public void SetStatusText(string StatusText)
         {
-            if (StatusText != null)
-                statusLabel.Text = StatusText;
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                if (StatusText != null)
+                    statusLabel.Text = StatusText;
+                else
+                    statusLabel.Text = Properties.Resources.Status_Ready;
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
             else
-                statusLabel.Text = Properties.Resources.Status_Ready;
+                sync();
         }
 
+        /// <summary>
+        /// Shows or hides the progress bar.
+        /// </summary>
+        /// <param name="Show">True if the progress bar is to be shown, false otherwise.</param>
         public void ShowProgressBar(bool Show)
         {
-            progessBar.Visible = Show;
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                progressBar.Visible = Show;
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
 
+        /// <summary>
+        /// Increases the progress bar's position by Delta.
+        /// </summary>
+        /// <param name="Delta">Amount of progress to be increased by.</param>
         public void StepProgressBar(int Delta)
         {
-            progessBar.Value += Delta;
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                progressBar.Step = Delta;
+                progressBar.PerformStep();
+            });
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
         #endregion
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            PageParser pp = new PageParser("http://www.google.com/");
+            pp.BeginParse();
+        }
     }
 }

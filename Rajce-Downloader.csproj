@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Engine\PageParser.cs" />
     <Compile Include="IStatusSink.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
