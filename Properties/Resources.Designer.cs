@@ -61,6 +61,33 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Chyba při čtení stránky alba: {0}.
+        /// </summary>
+        internal static string Error_GenericParseError {
+            get {
+                return ResourceManager.GetString("Error_GenericParseError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nelze načíst seznam fotek..
+        /// </summary>
+        internal static string Error_PhotosParseError {
+            get {
+                return ResourceManager.GetString("Error_PhotosParseError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nelze načíst adresu úložiště..
+        /// </summary>
+        internal static string Error_StorageParseError {
+            get {
+                return ResourceManager.GetString("Error_StorageParseError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
         internal static string Parser_EndTag {

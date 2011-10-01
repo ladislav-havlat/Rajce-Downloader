@@ -118,7 +118,8 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void BeginParse()
         {
-            photos.Clear();
+            lock (photos)
+                photos.Clear();
             pageData = null;
             pageDataEncoding = null;
 
@@ -221,33 +222,61 @@ namespace LH.Apps.RajceDownloader.Engine
                 new MethodInvoker(ParsePage).BeginInvoke(null, null);
         }
 
+        private void ParseError(string message)
+        {
+            //TODO: create a better error reporting system
+            MessageBox.Show(message, "Parse error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
         /// <summary>
         /// Called when the page is ready for parsing in the memory buffer.
         /// </summary>
         private void ParsePage()
         {
+            if (pageData == null || pageDataEncoding == null)
+                return;
+
             try
             {
                 Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_ParsingPage);
-
-                pageData.Position = 0;
-                string data = pageDataEncoding.GetString(pageData.ToArray());
-                pageData = null;
-
-                Match storageMatch = s_storageRegex.Match(data);
-                string storage = storageMatch.Groups[1].Value;
-                if (!storage.EndsWith("/"))
-                    storage += "/";
-
-                Match photosMatch = s_photosRegex.Match(data);
-                string photosValue = photosMatch.Groups[1].Value;
-
-                Match fileMatch = s_fileRegex.Match(photosValue);
-                while (fileMatch.Success)
+                try
                 {
-                    string fileName = fileMatch.Groups[1].Value;
-                    photos.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
-                    fileMatch = fileMatch.NextMatch();
+                    byte[] pageDataArray = pageData.ToArray();
+                    pageData = null;
+                    string data = pageDataEncoding.GetString(pageDataArray);
+
+                    Match storageMatch = s_storageRegex.Match(data);
+                    if (storageMatch.Success)
+                    {
+                        string storage = storageMatch.Groups[1].Value;
+                        if (!storage.EndsWith("/"))
+                            storage += "/";
+
+                        Match photosMatch = s_photosRegex.Match(data);
+                        if (photosMatch.Success)
+                        {
+                            string photosValue = photosMatch.Groups[1].Value;
+                            Match fileMatch = s_fileRegex.Match(photosValue);
+                            while (fileMatch.Success)
+                            {
+                                string fileName = fileMatch.Groups[1].Value;
+                                lock (photos)
+                                    photos.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
+                                fileMatch = fileMatch.NextMatch();
+                            }
+                        } //if (photosMatch.Success)
+                        else
+                            ParseError(Properties.Resources.Error_PhotosParseError);
+                    } //if (storageMatch.Success)
+                    else
+                        ParseError(Properties.Resources.Error_StorageParseError);
+                }
+                catch (Exception ex)
+                {
+                    ParseError(string.Format(
+                        Properties.Resources.Error_GenericParseError,
+                        ex.Message
+                        ));
                 }
             }
             finally

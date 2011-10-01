@@ -169,8 +169,11 @@ namespace LH.Apps.RajceDownloader
 
             MethodInvoker sync = new MethodInvoker(delegate()
             {
-                foreach (string url in pp.PhotosURLs)
-                    listBox.Items.Add(url);
+                lock (pp.PhotosURLs)
+                {
+                    foreach (string url in pp.PhotosURLs)
+                        listBox.Items.Add(url);
+                }
             });
             if (InvokeRequired)
                 Invoke(sync);
