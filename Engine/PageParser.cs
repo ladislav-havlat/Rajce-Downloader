@@ -75,7 +75,7 @@ namespace LH.Apps.RajceDownloader.Engine
         private MemoryStream pageData;
         private Encoding pageDataEncoding;
         private string pageURL;
-        private List<string> photosURLs;
+        private List<string> photos;
 
         /// <summary>
         /// Initializes a new instance of PageParser.
@@ -84,7 +84,7 @@ namespace LH.Apps.RajceDownloader.Engine
         public PageParser(string aPageURL)
         {
             pageURL = aPageURL;
-            photosURLs = new List<string>();
+            photos = new List<string>();
         }
 
         #region Public properties and events
@@ -98,7 +98,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public List<string> PhotosURLs
         {
-            get { return photosURLs; }
+            get { return photos; }
         }
         #endregion
 
@@ -118,7 +118,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void BeginParse()
         {
-            photosURLs.Clear();
+            photos.Clear();
             pageData = null;
             pageDataEncoding = null;
 
@@ -152,7 +152,10 @@ namespace LH.Apps.RajceDownloader.Engine
                         Program.StatusSink.BeginOperation(0, length, Properties.Resources.Status_DownloadingPage);
                     }
                     else
+                    {
                         pageData = new MemoryStream();
+                        Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_DownloadingPage);
+                    }
 
                     state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
                         new AsyncCallback(ReadPageCallback), state);
@@ -191,18 +194,22 @@ namespace LH.Apps.RajceDownloader.Engine
                             new AsyncCallback(ReadPageCallback), state);
                     }
                     else
-                    {
-                        HttpWebResponse httpResponse = state.Response as HttpWebResponse;
-                        if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
-                            pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
-                        if (pageDataEncoding == null)
-                            pageDataEncoding = Encoding.UTF8;
-                        
-                        state.Response.Close();
-                        Program.StatusSink.EndOperation();
+                        try
+                        {
+                            //try to get the encoding of the data or use UTF-8 by default
+                            HttpWebResponse httpResponse = state.Response as HttpWebResponse;
+                            if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
+                                pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
+                            if (pageDataEncoding == null)
+                                pageDataEncoding = Encoding.UTF8;
 
-                        finished = true;
-                    }
+                            finished = true;
+                        }
+                        finally
+                        {
+                            state.Response.Close();
+                            Program.StatusSink.EndOperation();
+                        }
                 }
             }
             catch
@@ -211,7 +218,7 @@ namespace LH.Apps.RajceDownloader.Engine
             }
 
             if (finished)
-                ParsePage();
+                new MethodInvoker(ParsePage).BeginInvoke(null, null);
         }
 
         /// <summary>
@@ -233,22 +240,22 @@ namespace LH.Apps.RajceDownloader.Engine
                     storage += "/";
 
                 Match photosMatch = s_photosRegex.Match(data);
-                string photos = photosMatch.Groups[1].Value;
+                string photosValue = photosMatch.Groups[1].Value;
 
-                Match fileMatch = s_fileRegex.Match(photos);
+                Match fileMatch = s_fileRegex.Match(photosValue);
                 while (fileMatch.Success)
                 {
                     string fileName = fileMatch.Groups[1].Value;
-                    photosURLs.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
+                    photos.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
                     fileMatch = fileMatch.NextMatch();
                 }
-
-                OnFinished();
             }
             finally
             {
                 Program.StatusSink.EndOperation();
             }
+
+            OnFinished();
         }
     }
 }
