@@ -36,7 +36,7 @@ namespace LH.Apps.RajceDownloader
                 SetStatusText(StatusText);
                 SetProgressBarBounds(Min, Max);
                 SetProgressBarPos(Min);
-                ShowProgressBar(true);
+                ShowProgressBar(Min != Max);
             });
 
             if (InvokeRequired)
@@ -159,25 +159,23 @@ namespace LH.Apps.RajceDownloader
         private void button1_Click(object sender, EventArgs e)
         {
             PageParser pp = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
+            pp.Finished += new EventHandler(pp_Finished);
             pp.BeginParse();
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void pp_Finished(object sender, EventArgs e)
         {
-            Regex reg = new Regex(@"var photos\s*=\s*\[(?<xx>\s*\{.*\}\s*)\]", RegexOptions.Singleline);
-            string s = "sfas daf var photos = [  {aa  }, {aaaaa}, {aaaa}] fasfawegaw aagw";
+            PageParser pp = sender as PageParser;
 
-            //string s = "var photos = [\r\n" +
-            //"	{ photoID: \"409450045\", date: \"2011-09-25 16:55:48\", name: \"\", isVideo: false, desc: \"\", info: \"KIF_7145.JPG | fotoaparát: KYOCERA, Finecam M410R | datum: 25.09.2011 16:55:48 | čas: 1/1401 s | clona: F4.0 | ohnisko: 11.2 mm | ISO: 100\", fileName: \"KIF_7145.jpg\", width: 1200, height: 900 }];\"";
-            //" { photoID: \"409450045\", date: \"2011-09-25 16:55:48\", name: \"\", isVideo: false, desc: \"\", }];\"";
-
-
-
-            Match match = reg.Match(s);
-            foreach (Capture c in match.Groups[1].Captures)
-                MessageBox.Show(c.Value);
-
-            MessageBox.Show(match.ToString());
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                foreach (string url in pp.PhotosURLs)
+                    listBox.Items.Add(url);
+            });
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
         }
     }
 }

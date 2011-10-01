@@ -124,6 +124,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Čtení stránky alba....
+        /// </summary>
+        internal static string Status_ParsingPage {
+            get {
+                return ResourceManager.GetString("Status_ParsingPage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Připraven.
         /// </summary>
         internal static string Status_Ready {

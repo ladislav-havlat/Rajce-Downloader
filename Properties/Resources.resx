@@ -138,6 +138,9 @@
   <data name="Status_DownloadingPage" xml:space="preserve">
     <value>Stahuji stránku alba...</value>
   </data>
+  <data name="Status_ParsingPage" xml:space="preserve">
+    <value>Čtení stránky alba...</value>
+  </data>
   <data name="Status_Ready" xml:space="preserve">
     <value>Připraven</value>
   </data>

@@ -87,6 +87,32 @@ namespace LH.Apps.RajceDownloader.Engine
             photosURLs = new List<string>();
         }
 
+        #region Public properties and events
+        /// <summary>
+        /// Fired when the parser has finished its work.
+        /// </summary>
+        public event EventHandler Finished;
+
+        /// <summary>
+        /// Access to the URL list.
+        /// </summary>
+        public List<string> PhotosURLs
+        {
+            get { return photosURLs; }
+        }
+        #endregion
+
+        #region Event invokers
+        /// <summary>
+        /// Invokes the Finished event.
+        /// </summary>
+        protected void OnFinished()
+        {
+            if (Finished != null)
+                Finished(this, new EventArgs());
+        }
+        #endregion
+
         /// <summary>
         /// Asynchronously starts the download and parsing process.
         /// </summary>
@@ -150,6 +176,7 @@ namespace LH.Apps.RajceDownloader.Engine
             if (state == null)
                 return;
 
+            bool finished = false;
             try
             {
                 if (state.ResponseStream != null)
@@ -174,7 +201,7 @@ namespace LH.Apps.RajceDownloader.Engine
                         state.Response.Close();
                         Program.StatusSink.EndOperation();
 
-                        PageReady();
+                        finished = true;
                     }
                 }
             }
@@ -182,31 +209,45 @@ namespace LH.Apps.RajceDownloader.Engine
             {
                 Program.StatusSink.EndOperation();
             }
+
+            if (finished)
+                ParsePage();
         }
 
         /// <summary>
         /// Called when the page is ready for parsing in the memory buffer.
         /// </summary>
-        private void PageReady()
+        private void ParsePage()
         {
-            pageData.Position = 0;
-            string data = pageDataEncoding.GetString(pageData.ToArray());
-            pageData = null;
-
-            Match storageMatch = s_storageRegex.Match(data);
-            string storage = storageMatch.Groups[1].Value;
-            if (!storage.EndsWith("/"))
-                storage += "/";
-
-            Match photosMatch = s_photosRegex.Match(data);
-            string photos = photosMatch.Groups[1].Value;
-
-            Match fileMatch = s_fileRegex.Match(photos);
-            while (fileMatch.Success)
+            try
             {
-                string fileName = fileMatch.Groups[1].Value;
-                photosURLs.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
-                fileMatch = fileMatch.NextMatch();
+                Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_ParsingPage);
+
+                pageData.Position = 0;
+                string data = pageDataEncoding.GetString(pageData.ToArray());
+                pageData = null;
+
+                Match storageMatch = s_storageRegex.Match(data);
+                string storage = storageMatch.Groups[1].Value;
+                if (!storage.EndsWith("/"))
+                    storage += "/";
+
+                Match photosMatch = s_photosRegex.Match(data);
+                string photos = photosMatch.Groups[1].Value;
+
+                Match fileMatch = s_fileRegex.Match(photos);
+                while (fileMatch.Success)
+                {
+                    string fileName = fileMatch.Groups[1].Value;
+                    photosURLs.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
+                    fileMatch = fileMatch.NextMatch();
+                }
+
+                OnFinished();
+            }
+            finally
+            {
+                Program.StatusSink.EndOperation();
             }
         }
     }
