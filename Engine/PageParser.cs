@@ -17,7 +17,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <summary>
         /// Passes download state between asynchronous calls.
         /// </summary>
-        private class DownloadState
+        private class AsyncState : IDisposable
         {
             /// <summary>
             /// Size of the buffer to be used while downloading the album page.
@@ -44,9 +44,18 @@ namespace LH.Apps.RajceDownloader.Engine
             /// <summary>
             /// Initializes a new instance of DownloadState.
             /// </summary>
-            public DownloadState()
+            public AsyncState()
             {
                 Buffer = new byte[BufferSize];
+            }
+
+            public void Dispose()
+            {
+                if (ResponseStream != null)
+                {
+                    ResponseStream.Dispose();
+                    ResponseStream = null;
+                }
             }
         }
 
@@ -116,17 +125,45 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <summary>
         /// Asynchronously starts the download and parsing process.
         /// </summary>
-        public void BeginParse()
+        public void BeginDownloadAndParse()
         {
             lock (photos)
                 photos.Clear();
             pageData = null;
             pageDataEncoding = null;
 
-            DownloadState state = new DownloadState();
+            AsyncState state = new AsyncState();
             state.Request = HttpWebRequest.Create(pageURL);
             state.Request.BeginGetResponse(GetResponseCallback, state);
             Program.StatusSink.SetStatusText(Properties.Resources.Status_DownloadingPage);
+        }
+
+        /// <summary>
+        /// Displays an Retry-Cancel error box and handles user's response.
+        /// </summary>
+        /// <param name="ex">The exception object to be the message got from.</param>
+        private void HandleDownloadException(Exception ex)
+        {
+            DialogResult dr = Program.PromptSink.Error(
+                string.Format(
+                    Properties.Resources.Error_DownloadPage,
+                    ex.Message
+                    ),
+                MessageBoxButtons.RetryCancel
+                );
+
+            MethodInvoker async;
+            switch (dr)
+            {
+                case DialogResult.Retry:
+                    async = () => BeginDownloadAndParse();
+                    async.BeginInvoke(null, null);
+                    break;
+
+                case DialogResult.Cancel:
+                    Program.StatusSink.EndOperation();
+                    break;
+            }
         }
 
         /// <summary>
@@ -135,7 +172,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="ar">Async parameter object.</param>
         public void GetResponseCallback(IAsyncResult ar)
         {
-            DownloadState state = ar.AsyncState as DownloadState;
+            AsyncState state = ar.AsyncState as AsyncState;
             if (state == null)
                 return;
 
@@ -164,9 +201,11 @@ namespace LH.Apps.RajceDownloader.Engine
                 else
                     Program.StatusSink.EndOperation();
             }
-            catch
+            catch (Exception ex)
             {
-                Program.StatusSink.EndOperation();
+                state.Dispose();
+                state = null;
+                HandleDownloadException(ex);
             }
         }
 
@@ -176,7 +215,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="ar">Async parameter object.</param>
         private void ReadPageCallback(IAsyncResult ar)
         {
-            DownloadState state = ar.AsyncState as DownloadState;
+            AsyncState state = ar.AsyncState as AsyncState;
             if (state == null)
                 return;
 
@@ -208,18 +247,24 @@ namespace LH.Apps.RajceDownloader.Engine
                         }
                         finally
                         {
-                            state.Response.Close();
+                            state.Dispose();
+                            state = null;
                             Program.StatusSink.EndOperation();
                         }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                Program.StatusSink.EndOperation();
+                state.Dispose();
+                state = null;
+                HandleDownloadException(ex);
             }
 
             if (finished)
-                new MethodInvoker(ParsePage).BeginInvoke(null, null);
+            {
+                MethodInvoker async = new MethodInvoker(() => ParsePage());
+                async.BeginInvoke(null, null);
+            }
         }
 
         /// <summary>

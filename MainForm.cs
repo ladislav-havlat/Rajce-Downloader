@@ -14,6 +14,9 @@ namespace LH.Apps.RajceDownloader
 {
     public partial class MainForm : Form, IStatusSink, IPromptSink
     {
+        private Downloader downloader;
+        private PageParser pageParser;
+
         public MainForm()
         {
             InitializeComponent();
@@ -193,31 +196,53 @@ namespace LH.Apps.RajceDownloader
 
         private void button1_Click(object sender, EventArgs e)
         {
-            PageParser pp = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
-            pp.Finished += new EventHandler(pp_Finished);
-            pp.BeginParse();
+//            pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
+            pageParser = new PageParser("file:///C:/Temp/album.html");
+            pageParser.Finished += new EventHandler(pageParser_Finished);
+            pageParser.BeginDownloadAndParse();
+            button1.Enabled = false;
         }
 
-        private void pp_Finished(object sender, EventArgs e)
+        private void pageParser_Finished(object sender, EventArgs e)
         {
-            PageParser pp = sender as PageParser;
+            if (pageParser == null)
+                return;
 
-            Photo[] photosArray;
-            lock (pp.PhotosURLs)
+            Photo[] photos;
+            lock (pageParser.PhotosURLs)
+                photos = (from string URL in pageParser.PhotosURLs
+                          select new Photo(URL, Path.GetFileName(URL)))
+                          .ToArray();
+            pageParser = null;
+
+            if (photos.Length > 0)
             {
-                var photos = from string URL in pp.PhotosURLs
-                             select new Photo(URL, Path.GetFileName(URL));
-                Downloader downloader = new Downloader();
+
+                downloader = new Downloader();
                 downloader.AddPhotos(photos);
                 downloader.BeginDownload();
-                photosArray = photos.ToArray();
+                downloader.Finished += new EventHandler(downloader_Finished);
+
+                MethodInvoker sync = new MethodInvoker(delegate()
+                    {
+                        listBox.Items.Clear();
+                        listBox.Items.AddRange(photos);
+                    }
+                );
+                if (InvokeRequired)
+                    Invoke(sync);
+                else
+                    sync();
             }
-            
-            MethodInvoker sync = new MethodInvoker(() => listBox.Items.AddRange(photosArray));
-            if (InvokeRequired)
-                Invoke(sync);
             else
-                sync();
+                Invoke(new MethodInvoker(() => button1.Enabled = true));
+        }
+
+        private void downloader_Finished(object sender, EventArgs e)
+        {
+            if (downloader == null)
+                return;
+            Invoke(new MethodInvoker(() => button1.Enabled = true));
         }
     }
 }

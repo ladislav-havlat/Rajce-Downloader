@@ -138,6 +138,22 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             get { return state; }
         }
+
+        /// <summary>
+        /// Fired when all the files have been downloaded.
+        /// </summary>
+        public event EventHandler Finished;
+        #endregion
+
+        #region Event invokers
+        /// <summary>
+        /// Invokes the Finished event.
+        /// </summary>
+        protected virtual void OnFinished()
+        {
+            if (Finished != null)
+                Finished(this, new EventArgs());
+        }
         #endregion
 
         /// <summary>
@@ -221,7 +237,10 @@ namespace LH.Apps.RajceDownloader.Engine
                     Program.StatusSink.SetProgressBarPos(currentPhoto);
                 }
                 else
+                {
                     EndDownload();
+                    OnFinished();
+                }
             }
             else
                 EndDownload();
@@ -324,15 +343,21 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                     else
                     {
-                        state.Dispose();
-                        state = null;
+                        if (state != null)
+                        {
+                            state.Dispose();
+                            state = null;
+                        }
                         NextPhoto();
                     }
                 }
                 catch (Exception ex)
                 {
-                    state.Dispose();
-                    state = null;
+                    if (state != null)
+                    {
+                        state.Dispose();
+                        state = null;
+                    }
                     HandleDownloadException(ex);
                 }
         }

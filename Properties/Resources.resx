@@ -159,6 +159,9 @@
   <data name="Error_CreateFile" xml:space="preserve">
     <value>Chyba při vytváření souboru: {0}</value>
   </data>
+  <data name="Error_DownloadPage" xml:space="preserve">
+    <value>Chyba při stahování stránky alba: {0}</value>
+  </data>
   <data name="Status_DownloadingFile" xml:space="preserve">
     <value>Stahování souboru: {0}</value>
   </data>
