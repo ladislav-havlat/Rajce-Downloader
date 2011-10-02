@@ -222,12 +222,6 @@ namespace LH.Apps.RajceDownloader.Engine
                 new MethodInvoker(ParsePage).BeginInvoke(null, null);
         }
 
-        private void ParseError(string message)
-        {
-            //TODO: create a better error reporting system
-            MessageBox.Show(message, "Parse error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-
         /// <summary>
         /// Called when the page is ready for parsing in the memory buffer.
         /// </summary>
@@ -266,14 +260,14 @@ namespace LH.Apps.RajceDownloader.Engine
                             }
                         } //if (photosMatch.Success)
                         else
-                            ParseError(Properties.Resources.Error_PhotosParseError);
+                            Program.PromptSink.Error(Properties.Resources.Error_PhotosParseError);
                     } //if (storageMatch.Success)
                     else
-                        ParseError(Properties.Resources.Error_StorageParseError);
+                        Program.PromptSink.Error(Properties.Resources.Error_StorageParseError);
                 }
                 catch (Exception ex)
                 {
-                    ParseError(string.Format(
+                    Program.PromptSink.Error(string.Format(
                         Properties.Resources.Error_GenericParseError,
                         ex.Message
                         ));
@@ -281,6 +275,8 @@ namespace LH.Apps.RajceDownloader.Engine
             }
             finally
             {
+                pageData = null;
+                pageDataEncoding = null;
                 Program.StatusSink.EndOperation();
             }
 

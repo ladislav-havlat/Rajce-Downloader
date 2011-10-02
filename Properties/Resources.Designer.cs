@@ -61,6 +61,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Rajče Downloader.
+        /// </summary>
+        internal static string Caption_Generic {
+            get {
+                return ResourceManager.GetString("Caption_Generic", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Chyba při čtení stránky alba: {0}.
         /// </summary>
         internal static string Error_GenericParseError {

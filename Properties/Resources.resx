@@ -153,4 +153,7 @@
   <data name="Status_Ready" xml:space="preserve">
     <value>Připraven</value>
   </data>
+  <data name="Caption_Generic" xml:space="preserve">
+    <value>Rajče Downloader</value>
+  </data>
 </root>

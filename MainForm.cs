@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader
 {
-    public partial class MainForm : Form, IStatusSink
+    public partial class MainForm : Form, IStatusSink, IPromptSink
     {
         public MainForm()
         {
@@ -154,6 +154,28 @@ namespace LH.Apps.RajceDownloader
             else
                 sync();
         }
+        #endregion
+
+        #region IPromptSink Members
+
+        public void Error(string message, string caption)
+        {
+            MethodInvoker sync = new MethodInvoker(delegate()
+            {
+                MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            );
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
+        }
+
+        public void Error(string message)
+        {
+            Error(message, Properties.Resources.Caption_Generic);
+        }
+
         #endregion
 
         private void button1_Click(object sender, EventArgs e)
