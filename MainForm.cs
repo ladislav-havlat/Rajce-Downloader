@@ -202,6 +202,7 @@ namespace LH.Apps.RajceDownloader
         {
             PageParser pp = sender as PageParser;
 
+            Photo[] photosArray;
             lock (pp.PhotosURLs)
             {
                 var photos = from string URL in pp.PhotosURLs
@@ -209,16 +210,10 @@ namespace LH.Apps.RajceDownloader
                 Downloader downloader = new Downloader();
                 downloader.AddPhotos(photos);
                 downloader.BeginDownload();
+                photosArray = photos.ToArray();
             }
             
-            MethodInvoker sync = new MethodInvoker(delegate()
-            {
-                lock (pp.PhotosURLs)
-                {
-                    foreach (string url in pp.PhotosURLs)
-                        listBox.Items.Add(url);
-                }
-            });
+            MethodInvoker sync = new MethodInvoker(() => listBox.Items.AddRange(photosArray));
             if (InvokeRequired)
                 Invoke(sync);
             else

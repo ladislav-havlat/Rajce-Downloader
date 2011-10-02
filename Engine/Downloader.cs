@@ -33,6 +33,15 @@ namespace LH.Apps.RajceDownloader.Engine
             URL = aURL;
             Target = aTarget;
         }
+
+        /// <summary>
+        /// Returns a string representation of this object.
+        /// </summary>
+        /// <returns>A string representation of this object.</returns>
+        public override string ToString()
+        {
+            return Path.GetFileName(URL);
+        }
     }
 
     public class Downloader
