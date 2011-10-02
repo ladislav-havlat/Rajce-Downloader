@@ -261,6 +261,11 @@ namespace LH.Apps.RajceDownloader.Engine
             }
             catch (Exception ex)
             {
+                if (state.ResponseStream != null)
+                {
+                    state.ResponseStream.Close();
+                    state.ResponseStream = null;
+                }
                 Program.PromptSink.Error(ex.Message);
             }
         }
@@ -273,26 +278,35 @@ namespace LH.Apps.RajceDownloader.Engine
             if (state == null)
                 return;
 
-            try
-            {
-                int read = state.ResponseStream.EndRead(ar);
-                if (read > 0)
+            if (state.ResponseStream != null)
+                try
                 {
-                    state.FileStream.Write(state.Buffer, 0, read);
-                    state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
-                        new AsyncCallback(ResponseReadCallback), state);
+                    int read = state.ResponseStream.EndRead(ar);
+                    if (read > 0)
+                    {
+                        if (state.FileStream != null)
+                            state.FileStream.Write(state.Buffer, 0, read);
+                        state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
+                            new AsyncCallback(ResponseReadCallback), state);
+                    }
+                    else
+                    {
+                        if (state.FileStream != null)
+                            state.FileStream.Close();
+                        state.ResponseStream.Close();
+                        state.ResponseStream = null;
+                        NextPhoto();
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    state.FileStream.Close();
-                    state.ResponseStream.Close();
-                    NextPhoto();
+                    if (state.ResponseStream != null)
+                    {
+                        state.ResponseStream.Close();
+                        state.ResponseStream = null;
+                    }
+                    Program.PromptSink.Error(ex.Message);
                 }
-            }
-            catch (Exception ex)
-            {
-                Program.PromptSink.Error(ex.Message);
-            }
         }
     }
 }
