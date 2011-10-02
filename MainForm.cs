@@ -189,6 +189,17 @@ namespace LH.Apps.RajceDownloader
         {
             PageParser pp = sender as PageParser;
 
+            lock (pp.PhotosURLs)
+            {
+                if (pp.PhotosURLs.Count > 0)
+                {
+                    Photo p = new Photo(pp.PhotosURLs[0], "test.jpg");
+
+                    Downloader dn = new Downloader();
+                    dn.BeginDownload(p);
+                }
+            }
+            
             MethodInvoker sync = new MethodInvoker(delegate()
             {
                 lock (pp.PhotosURLs)

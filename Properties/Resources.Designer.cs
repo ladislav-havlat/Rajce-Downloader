@@ -70,6 +70,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Chyba při vytváření souboru: {0}.
+        /// </summary>
+        internal static string Error_CreateFile {
+            get {
+                return ResourceManager.GetString("Error_CreateFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Chyba při čtení stránky alba: {0}.
         /// </summary>
         internal static string Error_GenericParseError {

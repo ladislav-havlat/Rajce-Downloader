@@ -156,4 +156,7 @@
   <data name="Caption_Generic" xml:space="preserve">
     <value>Rajče Downloader</value>
   </data>
+  <data name="Error_CreateFile" xml:space="preserve">
+    <value>Chyba při vytváření souboru: {0}</value>
+  </data>
 </root>
