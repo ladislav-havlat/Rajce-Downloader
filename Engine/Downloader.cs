@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Net;
 using System.IO;
+using System.Windows.Forms;
+using System.ComponentModel;
 
 namespace LH.Apps.RajceDownloader.Engine
 {
@@ -38,7 +40,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <summary>
         /// Object used to pass async state between async calls.
         /// </summary>
-        private class AsyncState
+        private class AsyncState : IDisposable
         {
             const int BufferSize = 1024;
 
@@ -73,6 +75,20 @@ namespace LH.Apps.RajceDownloader.Engine
             public AsyncState()
             {
                 Buffer = new byte[BufferSize];
+            }
+
+            public void Dispose()
+            {
+                if (ResponseStream != null)
+                {
+                    ResponseStream.Dispose();
+                    ResponseStream = null;
+                }
+                if (FileStream != null)
+                {
+                    FileStream.Dispose();
+                    FileStream = null;
+                }
             }
         }
 
@@ -143,21 +159,23 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (state != DownloaderState.Idle)
                 return;
+            if (photos.Count == 0)
+                return;
 
             try
             {
                 state = DownloaderState.Downloading;
-                if (photos.Count > 0)
-                {
-                    currentPhoto = 0;
-                    BeginDownloadPhoto(photos[currentPhoto]);
-                    Program.StatusSink.BeginOperation(
-                        0, photos.Count,
-                        string.Format(Properties.Resources.Status_DownloadingFile, string.Empty)
-                        );
-                }
-                else
-                    EndDownload();
+                currentPhoto = 0;
+
+                Photo photo = photos[currentPhoto];
+                BeginDownloadPhoto(photo);
+                Program.StatusSink.BeginOperation(
+                    0, photos.Count,
+                    string.Format(
+                        Properties.Resources.Status_DownloadingFile, 
+                        Path.GetFileName(photo.URL)
+                        )
+                    );
             }
             catch
             {
@@ -185,14 +203,13 @@ namespace LH.Apps.RajceDownloader.Engine
                 currentPhoto++;
                 if (currentPhoto <= photos.Count - 1)
                 {
-                    if (BeginDownloadPhoto(photos[currentPhoto]))
-                    {
-                        Program.StatusSink.SetStatusText(string.Format(
-                            Properties.Resources.Status_DownloadingFile,
-                            Path.GetFileName(photos[currentPhoto].URL)
-                            ));
-                        Program.StatusSink.SetProgressBarPos(currentPhoto);
-                    }
+                    Photo nextPhoto = photos[currentPhoto];
+                    BeginDownloadPhoto(nextPhoto);
+                    Program.StatusSink.SetStatusText(string.Format(
+                        Properties.Resources.Status_DownloadingFile,
+                        Path.GetFileName(nextPhoto.URL)
+                        ));
+                    Program.StatusSink.SetProgressBarPos(currentPhoto);
                 }
                 else
                     EndDownload();
@@ -205,39 +222,49 @@ namespace LH.Apps.RajceDownloader.Engine
         /// Starts download of a single photo.
         /// </summary>
         /// <param name="photo">The Photo to be downloaded.</param>
-        /// <returns>True if the operation has been started successfully, false otherwise.</returns>
-        public bool BeginDownloadPhoto(Photo photo)
+        public void BeginDownloadPhoto(Photo photo)
         {
             if (photo == null)
-                return false;
+                return;
 
-            Uri uri = new Uri(photo.URL);
+            AsyncState state = new AsyncState();
+            state.Photo = photo;
             try
             {
-                AsyncState state = new AsyncState();
-                state.Photo = photo;
-
-                try
-                {
-                    state.FileStream = new FileStream(photo.Target, FileMode.Create, FileAccess.Write, FileShare.None);
-                }
-                catch (Exception ex)
-                {
-                    Program.PromptSink.Error(string.Format(
-                        Properties.Resources.Error_CreateFile,
-                        ex.Message
-                        ));
-                    return false;
-                }
-
-                state.Request = WebRequest.Create(uri);
+                state.FileStream = new FileStream(state.Photo.Target, FileMode.Create, FileAccess.Write, FileShare.None);
+                state.Request = WebRequest.Create(state.Photo.URL);
                 state.Request.BeginGetResponse(new AsyncCallback(GetResponseCallback), state);
-                return true;
             }
             catch (Exception ex)
             {
-                Program.PromptSink.Error(ex.Message);
-                return false;
+                state.Dispose();
+                state = null;
+                HandleDownloadException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Displays an Abort-Retry-Ignore error box and handles user's response.
+        /// </summary>
+        /// <param name="ex">The exception object to be the message got from.</param>
+        private void HandleDownloadException(Exception ex)
+        {
+            MethodInvoker async;
+            switch (Program.PromptSink.Error(ex.Message, MessageBoxButtons.AbortRetryIgnore))
+            {
+                case DialogResult.Abort:
+                    EndDownload();
+                    break;
+
+                case DialogResult.Retry:
+                    async = () => BeginDownloadPhoto(photos[currentPhoto]);
+                    async.BeginInvoke(null, null);
+                    break;
+
+                case DialogResult.Ignore:
+                    async = () => NextPhoto();
+                    async.BeginInvoke(null, null);
+                    break;
             }
         }
 
@@ -261,12 +288,9 @@ namespace LH.Apps.RajceDownloader.Engine
             }
             catch (Exception ex)
             {
-                if (state.ResponseStream != null)
-                {
-                    state.ResponseStream.Close();
-                    state.ResponseStream = null;
-                }
-                Program.PromptSink.Error(ex.Message);
+                state.Dispose();
+                state = null;
+                HandleDownloadException(ex);
             }
         }
 
@@ -291,21 +315,16 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                     else
                     {
-                        if (state.FileStream != null)
-                            state.FileStream.Close();
-                        state.ResponseStream.Close();
-                        state.ResponseStream = null;
+                        state.Dispose();
+                        state = null;
                         NextPhoto();
                     }
                 }
                 catch (Exception ex)
                 {
-                    if (state.ResponseStream != null)
-                    {
-                        state.ResponseStream.Close();
-                        state.ResponseStream = null;
-                    }
-                    Program.PromptSink.Error(ex.Message);
+                    state.Dispose();
+                    state = null;
+                    HandleDownloadException(ex);
                 }
         }
     }

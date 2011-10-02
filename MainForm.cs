@@ -159,22 +159,34 @@ namespace LH.Apps.RajceDownloader
 
         #region IPromptSink Members
 
+        public void Error(string message)
+        {
+            Error(message, Properties.Resources.Caption_Generic);
+        }
+
         public void Error(string message, string caption)
         {
-            MethodInvoker sync = new MethodInvoker(delegate()
-            {
-                MessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            Error(message, caption, MessageBoxButtons.OK);
+        }
+
+        public DialogResult Error(string message, MessageBoxButtons buttons)
+        {
+            return Error(message, Properties.Resources.Caption_Generic, buttons);
+        }
+
+        public DialogResult Error(string message, string caption, MessageBoxButtons buttons)
+        {
+            DialogResult result = DialogResult.None;
+
+            MethodInvoker sync = new MethodInvoker(
+                () => result = MessageBox.Show(message, caption, buttons, MessageBoxIcon.Error)
             );
             if (InvokeRequired)
                 Invoke(sync);
             else
                 sync();
-        }
 
-        public void Error(string message)
-        {
-            Error(message, Properties.Resources.Caption_Generic);
+            return result;
         }
 
         #endregion
