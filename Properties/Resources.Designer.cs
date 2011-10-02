@@ -160,6 +160,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Stahování souboru: {0}.
+        /// </summary>
+        internal static string Status_DownloadingFile {
+            get {
+                return ResourceManager.GetString("Status_DownloadingFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Stahuji stránku alba....
         /// </summary>
         internal static string Status_DownloadingPage {

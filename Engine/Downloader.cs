@@ -91,6 +91,7 @@ namespace LH.Apps.RajceDownloader.Engine
             Downloading
         }
 
+        private int currentPhoto;
         private List<Photo> photos;
         private DownloaderState state;
 
@@ -99,6 +100,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public Downloader()
         {
+            currentPhoto = -1;
             photos = new List<Photo>();
             state = DownloaderState.Idle;
         }
@@ -119,8 +121,9 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="newPhotos"></param>
         public void AddPhotos(IEnumerable<Photo> newPhotos)
         {
-            lock (photos)
-                photos.AddRange(newPhotos);
+            if (state == DownloaderState.Downloading)
+                throw new InvalidOperationException("Downloader is busy.");
+            photos.AddRange(newPhotos);
         }
 
         /// <summary>
@@ -128,8 +131,74 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void ClearPhotos()
         {
-            lock (photos)
-                photos.Clear();
+            if (state == DownloaderState.Downloading)
+                throw new InvalidOperationException("Downloader is busy.");
+            photos.Clear();
+        }
+
+        /// <summary>
+        /// Starts the downloading.
+        /// </summary>
+        public void BeginDownload()
+        {
+            if (state != DownloaderState.Idle)
+                return;
+
+            try
+            {
+                state = DownloaderState.Downloading;
+                if (photos.Count > 0)
+                {
+                    currentPhoto = 0;
+                    BeginDownloadPhoto(photos[currentPhoto]);
+                    Program.StatusSink.BeginOperation(
+                        0, photos.Count,
+                        string.Format(Properties.Resources.Status_DownloadingFile, string.Empty)
+                        );
+                }
+                else
+                    EndDownload();
+            }
+            catch
+            {
+                EndDownload();
+            }
+        }
+
+        /// <summary>
+        /// Call this to put the downloader into idle state.
+        /// </summary>
+        private void EndDownload()
+        {
+            state = DownloaderState.Idle;
+            currentPhoto = -1;
+            Program.StatusSink.EndOperation();
+        }
+
+        /// <summary>
+        /// Starts downloading of the next photo int the queue.
+        /// </summary>
+        private void NextPhoto()
+        {
+            if (photos.Count > 0 && currentPhoto > -1)
+            {
+                currentPhoto++;
+                if (currentPhoto <= photos.Count - 1)
+                {
+                    if (BeginDownloadPhoto(photos[currentPhoto]))
+                    {
+                        Program.StatusSink.SetStatusText(string.Format(
+                            Properties.Resources.Status_DownloadingFile,
+                            Path.GetFileName(photos[currentPhoto].URL)
+                            ));
+                        Program.StatusSink.SetProgressBarPos(currentPhoto);
+                    }
+                }
+                else
+                    EndDownload();
+            }
+            else
+                EndDownload();
         }
 
         /// <summary>
@@ -137,7 +206,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         /// <param name="photo">The Photo to be downloaded.</param>
         /// <returns>True if the operation has been started successfully, false otherwise.</returns>
-        public bool BeginDownload(Photo photo)
+        public bool BeginDownloadPhoto(Photo photo)
         {
             if (photo == null)
                 return false;
@@ -217,6 +286,7 @@ namespace LH.Apps.RajceDownloader.Engine
                 {
                     state.FileStream.Close();
                     state.ResponseStream.Close();
+                    NextPhoto();
                 }
             }
             catch (Exception ex)

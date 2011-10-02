@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using LH.Apps.RajceDownloader.Engine;
 using System.Text.RegularExpressions;
+using System.IO;
 
 namespace LH.Apps.RajceDownloader
 {
@@ -191,13 +192,11 @@ namespace LH.Apps.RajceDownloader
 
             lock (pp.PhotosURLs)
             {
-                if (pp.PhotosURLs.Count > 0)
-                {
-                    Photo p = new Photo(pp.PhotosURLs[0], "test.jpg");
-
-                    Downloader dn = new Downloader();
-                    dn.BeginDownload(p);
-                }
+                var photos = from string URL in pp.PhotosURLs
+                             select new Photo(URL, Path.GetFileName(URL));
+                Downloader downloader = new Downloader();
+                downloader.AddPhotos(photos);
+                downloader.BeginDownload();
             }
             
             MethodInvoker sync = new MethodInvoker(delegate()
