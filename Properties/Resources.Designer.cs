@@ -70,6 +70,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Soubor {0} již existuje. Chcete jej přepsat? Pokud zvolíte Ne, nový soubor bude přejmenován. Pokud zvolíte Storno, soubor nebude stažen..
+        /// </summary>
+        internal static string Downloader_FileExists {
+            get {
+                return ResourceManager.GetString("Downloader_FileExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Chyba při vytváření souboru: {0}.
         /// </summary>
         internal static string Error_CreateFile {

@@ -229,7 +229,10 @@ namespace LH.Apps.RajceDownloader.Engine
                 if (currentPhoto <= photos.Count - 1)
                 {
                     Photo nextPhoto = photos[currentPhoto];
-                    BeginDownloadPhoto(nextPhoto);
+
+                    MethodInvoker async = new MethodInvoker(() => BeginDownloadPhoto(nextPhoto));
+                    async.BeginInvoke(null, null);
+
                     Program.StatusSink.SetStatusText(string.Format(
                         Properties.Resources.Status_DownloadingFile,
                         Path.GetFileName(nextPhoto.URL)
@@ -239,17 +242,17 @@ namespace LH.Apps.RajceDownloader.Engine
                 else
                 {
                     EndDownload();
-                    OnFinished();
+                    MethodInvoker async = new MethodInvoker(() => OnFinished());
+                    async.BeginInvoke(null, null);
                 }
             }
-            else
-                EndDownload();
         }
 
         /// <summary>
         /// Starts download of a single photo.
         /// </summary>
         /// <param name="photo">The Photo to be downloaded.</param>
+        /// <remarks>As this method might block on a MessageBox, it is advisable to allways BeginInvoke it.</remarks>
         public void BeginDownloadPhoto(Photo photo)
         {
             if (photo == null)
@@ -259,7 +262,37 @@ namespace LH.Apps.RajceDownloader.Engine
             state.Photo = photo;
             try
             {
-                state.FileStream = new FileStream(state.Photo.Target, FileMode.Create, FileAccess.Write, FileShare.None);
+                string fileName = Path.GetFullPath(state.Photo.Target);
+                if (File.Exists(fileName))
+                {
+                    //TODO: workaround for a directory with that name...
+                    DialogResult dr = Program.PromptSink.Question(
+                        string.Format(
+                            Properties.Resources.Downloader_FileExists, 
+                            Path.GetFileName(fileName)
+                            ),
+                        MessageBoxButtons.YesNoCancel
+                        );
+                    switch (dr)
+                    {
+                        case DialogResult.Yes:
+                            //just continue
+                            break;
+
+                        case DialogResult.No:
+                            fileName = Utils.GetUniqueFileName(fileName);
+                            break;
+
+                        case DialogResult.Cancel:
+                            //cancel this round
+                            state.Dispose();
+                            state = null;
+                            NextPhoto();
+                            return;
+                    }
+                }
+
+                state.FileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
                 state.Request = WebRequest.Create(state.Photo.URL);
                 state.Request.BeginGetResponse(new AsyncCallback(GetResponseCallback), state);
             }
@@ -275,6 +308,8 @@ namespace LH.Apps.RajceDownloader.Engine
         /// Displays an Abort-Retry-Ignore error box and handles user's response.
         /// </summary>
         /// <param name="ex">The exception object to be the message got from.</param>
+        /// <remarks>Though this method contains a marshalled call to MessageBox, it should not be
+        /// BeginInvoked. Exception should be handled immediately and in the offending thread.</remarks>
         private void HandleDownloadException(Exception ex)
         {
             MethodInvoker async;
@@ -282,6 +317,8 @@ namespace LH.Apps.RajceDownloader.Engine
             {
                 case DialogResult.Abort:
                     EndDownload();
+                    async = () => OnFinished();
+                    async.BeginInvoke(null, null);
                     break;
 
                 case DialogResult.Retry:
@@ -290,8 +327,7 @@ namespace LH.Apps.RajceDownloader.Engine
                     break;
 
                 case DialogResult.Ignore:
-                    async = () => NextPhoto();
-                    async.BeginInvoke(null, null);
+                    NextPhoto();
                     break;
             }
         }
@@ -343,11 +379,8 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                     else
                     {
-                        if (state != null)
-                        {
-                            state.Dispose();
-                            state = null;
-                        }
+                        state.Dispose();
+                        state = null;
                         NextPhoto();
                     }
                 }
@@ -355,6 +388,7 @@ namespace LH.Apps.RajceDownloader.Engine
                 {
                     if (state != null)
                     {
+                        //state might has got already disposed
                         state.Dispose();
                         state = null;
                     }

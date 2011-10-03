@@ -46,6 +46,9 @@ namespace LH.Apps.RajceDownloader
         /// <returns>A file name that is unique within the directory.</returns>
         public static string GetUniqueFileName(string desiredName)
         {
+            //ensure the input path is absolute!!!
+            desiredName = Path.GetFullPath(desiredName);
+
             string path = IncludeTrailingPathSeparator(Path.GetDirectoryName(desiredName));
             string nameWithoutExt = Path.GetFileNameWithoutExtension(desiredName);
             string pathAndName = path + nameWithoutExt;
@@ -61,6 +64,5 @@ namespace LH.Apps.RajceDownloader
             }
             return getNewName();
         }
-
     }
 }

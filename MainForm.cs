@@ -98,6 +98,9 @@ namespace LH.Apps.RajceDownloader
                 progressBar.Value = Pos;
             });
 
+            if (Pos == 1)
+                MessageBox.Show(string.Empty);
+
             if (InvokeRequired)
                 Invoke(sync);
             else
@@ -183,6 +186,27 @@ namespace LH.Apps.RajceDownloader
 
             MethodInvoker sync = new MethodInvoker(
                 () => result = MessageBox.Show(message, caption, buttons, MessageBoxIcon.Error)
+            );
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
+
+            return result;
+        }
+
+        public DialogResult Question(string message, MessageBoxButtons buttons)
+        {
+            DialogResult result = DialogResult.None;
+
+            MethodInvoker sync = new MethodInvoker(delegate()
+                {
+                    result = MessageBox.Show(
+                        message, 
+                        Properties.Resources.Caption_Generic, 
+                        buttons, 
+                        MessageBoxIcon.Question);
+                }
             );
             if (InvokeRequired)
                 Invoke(sync);

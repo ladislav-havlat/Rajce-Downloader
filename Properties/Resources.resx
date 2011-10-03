@@ -156,6 +156,9 @@
   <data name="Caption_Generic" xml:space="preserve">
     <value>Rajče Downloader</value>
   </data>
+  <data name="Downloader_FileExists" xml:space="preserve">
+    <value>Soubor {0} již existuje. Chcete jej přepsat? Pokud zvolíte Ne, nový soubor bude přejmenován. Pokud zvolíte Storno, soubor nebude stažen.</value>
+  </data>
   <data name="Error_CreateFile" xml:space="preserve">
     <value>Chyba při vytváření souboru: {0}</value>
   </data>

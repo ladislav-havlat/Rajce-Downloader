@@ -37,6 +37,14 @@ namespace LH.Apps.RajceDownloader
         /// <param name="buttons">Buttons to be displayed on the surface of the box.</param>
         /// <returns>Dialog result of the box.</returns>
         DialogResult Error(string message, MessageBoxButtons buttons);
+
+        /// <summary>
+        /// Displays a question box with specified buttons.
+        /// </summary>
+        /// <param name="message">Message to be displayed.</param>
+        /// <param name="buttons">Buttons to be displayed.</param>
+        /// <returns>Dialog result of the box.</returns>
+        DialogResult Question(string message, MessageBoxButtons buttons);
     }
 
     /// <summary>
@@ -54,12 +62,17 @@ namespace LH.Apps.RajceDownloader
 
         public DialogResult Error(string message, string caption, MessageBoxButtons buttons)
         {
-            throw new NotImplementedException();
+            return DialogResult.OK;
         }
 
         public DialogResult Error(string message, MessageBoxButtons buttons)
         {
-            throw new NotImplementedException();
+            return DialogResult.OK;
+        }
+
+        public DialogResult Question(string message, MessageBoxButtons buttons)
+        {
+            return DialogResult.None;
         }
     }
 }
