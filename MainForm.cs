@@ -98,9 +98,6 @@ namespace LH.Apps.RajceDownloader
                 progressBar.Value = Pos;
             });
 
-            if (Pos == 1)
-                MessageBox.Show(string.Empty);
-
             if (InvokeRequired)
                 Invoke(sync);
             else
