@@ -44,6 +44,9 @@ namespace LH.Apps.RajceDownloader.Engine
         }
     }
 
+    /// <summary>
+    /// Provides a batch photo downloader with error handling.
+    /// </summary>
     public class Downloader
     {
         /// <summary>
@@ -90,12 +93,12 @@ namespace LH.Apps.RajceDownloader.Engine
             {
                 if (ResponseStream != null)
                 {
-                    ResponseStream.Dispose();
+                    ResponseStream.Close();
                     ResponseStream = null;
                 }
                 if (FileStream != null)
                 {
-                    FileStream.Dispose();
+                    FileStream.Close();
                     FileStream = null;
                 }
             }
@@ -111,11 +114,25 @@ namespace LH.Apps.RajceDownloader.Engine
             /// </summary>
             Idle,
             /// <summary>
-            /// The Downloader is currently downloading a file.
+            /// The Downloader has started its work, access to the list is disabled.
+            /// </summary>
+            Started,
+            /// <summary>
+            /// The Downloader is preparing a request to be sent.
+            /// </summary>
+            PreparingRequest,
+            /// <summary>
+            /// The Downloader has sent the request and waits for a response.
+            /// </summary>
+            RequestSent,
+            /// <summary>
+            /// The Downloader is downloading a file.
             /// </summary>
             Downloading
         }
 
+        private bool abort;
+        private AsyncState asyncState;
         private int currentPhoto;
         private List<Photo> photos;
         private DownloaderState state;
@@ -156,13 +173,14 @@ namespace LH.Apps.RajceDownloader.Engine
         }
         #endregion
 
+        #region Public methods
         /// <summary>
         /// Inserts a range of Photo objects into the internal queue.
         /// </summary>
         /// <param name="newPhotos"></param>
         public void AddPhotos(IEnumerable<Photo> newPhotos)
         {
-            if (state == DownloaderState.Downloading)
+            if (state != DownloaderState.Idle)
                 throw new InvalidOperationException("Downloader is busy.");
             photos.AddRange(newPhotos);
         }
@@ -172,7 +190,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void ClearPhotos()
         {
-            if (state == DownloaderState.Downloading)
+            if (state != DownloaderState.Idle)
                 throw new InvalidOperationException("Downloader is busy.");
             photos.Clear();
         }
@@ -184,16 +202,31 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (state != DownloaderState.Idle)
                 return;
+            abort = false;
 
             if (photos.Count == 0)
-                OnFinished(); //nothing to be done here...
+            {
+                //nothing to be done here and no work has started yet
+                //as we haven't even started yet, there is no need to call Done() here
+                //just invoke Finished event, it should get called always
+                MethodInvoker async = () => OnFinished();
+                async.BeginInvoke(null, null);
+            }
             else
                 try
                 {
-                    state = DownloaderState.Downloading;
-                    MethodInvoker async = () => BeginDownloadNextPhoto();
-                    async.BeginInvoke(null, null);
+                    state = DownloaderState.Started;
                     Program.StatusSink.BeginOperation(0, photos.Count, string.Empty);
+                    if (!abort)
+                    {
+                        MethodInvoker async = () => BeginDownloadNextPhoto();
+                        async.BeginInvoke(null, null);
+                    }
+                    else
+                    {
+                        MethodInvoker async = () => Done();
+                        async.BeginInvoke(null, null);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -204,6 +237,29 @@ namespace LH.Apps.RajceDownloader.Engine
         }
 
         /// <summary>
+        /// Aborts the pending operation.
+        /// </summary>
+        public void Abort()
+        {
+            abort = true;
+            switch (state)
+            {
+                case DownloaderState.RequestSent:
+                    if (asyncState != null)
+                        if (asyncState.Request != null)
+                            asyncState.Request.Abort();
+                    break;
+
+                case DownloaderState.Downloading:
+                    if (asyncState != null)
+                        if (asyncState.Response != null)
+                            asyncState.Response.Close();
+                    break;
+            }
+        }
+        #endregion
+
+        /// <summary>
         /// Method to be called when all the requested photos have been downloaded.
         /// </summary>
         /// <remarks>This method directly calls OnFinished event invoker, so it should be 
@@ -212,12 +268,25 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             try
             {
-                state = DownloaderState.Idle;
+                DisposeAsyncState(); //it should be already disposed
                 Program.StatusSink.EndOperation();
+                state = DownloaderState.Idle;
             }
             finally
             {
                 OnFinished(); //this should get called _ALWAYS_...
+            }
+        }
+
+        /// <summary>
+        /// Disposes the current async state and sets the reference to null.
+        /// </summary>
+        private void DisposeAsyncState()
+        {
+            if (asyncState != null)
+            {
+                asyncState.Dispose();
+                asyncState = null;
             }
         }
 
@@ -242,6 +311,7 @@ namespace LH.Apps.RajceDownloader.Engine
             else if (currentPhoto >= -1 && currentPhoto <= photos.Count - 1)
             {
                 //-1 is valid here as the photos must contain at least one item
+                state = DownloaderState.PreparingRequest;
                 currentPhoto++;
                 Program.StatusSink.SetStatusText(string.Format(
                     Properties.Resources.Status_DownloadingFile,
@@ -261,16 +331,19 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <remarks>This method should be called always asynchronously, with the exception of 
         /// BeginDownloadNextPhoto().</remarks>
         /// <seealso cref="LH.Apps.RajceDownloader.Engine.Downloader"/>
-        public void BeginDownloadPhoto(int photoIndex)
+        private void BeginDownloadPhoto(int photoIndex)
         {
             if (photoIndex < 0 || photoIndex > photos.Count - 1)
                 return;
 
-            AsyncState state = new AsyncState();
-            state.Photo = photos[photoIndex];
+            if (asyncState != null)
+                asyncState.Dispose();
+
+            asyncState = new AsyncState();
+            asyncState.Photo = photos[photoIndex];
             try
             {
-                string fileName = Path.GetFullPath(state.Photo.Target);
+                string fileName = Path.GetFullPath(asyncState.Photo.Target);
                 if (File.Exists(fileName))
                 {
                     //TODO: workaround for a directory with that name...
@@ -293,8 +366,8 @@ namespace LH.Apps.RajceDownloader.Engine
 
                         case DialogResult.Cancel:
                             //cancel this round
-                            state.Dispose();
-                            state = null;
+                            asyncState.Dispose();
+                            asyncState = null;
 
                             MethodInvoker async = () => BeginDownloadNextPhoto();
                             async.BeginInvoke(null, null);
@@ -302,16 +375,30 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                 }
 
-                state.FileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
-                state.Request = WebRequest.Create(state.Photo.URL);
-                state.Request.BeginGetResponse(new AsyncCallback(GetResponseCallback), state);
+                asyncState.FileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                asyncState.Request = WebRequest.Create(asyncState.Photo.URL);
+                if (!abort)
+                {
+                    asyncState.Request.BeginGetResponse(new AsyncCallback(GetResponseCallback), null);
+                    state = DownloaderState.RequestSent;
+                }
+                else
+                    HandleAsyncAbort();
             }
             catch (Exception ex)
             {
-                state.Dispose();
-                state = null;
                 HandleDownloadException(ex);
             }
+        }
+
+        /// <summary>
+        /// Handles an abort condition encountered in the async phase. Cleans up async state and invokes Done().
+        /// </summary>
+        private void HandleAsyncAbort()
+        {
+            DisposeAsyncState();
+            MethodInvoker async = () => Done();
+            async.BeginInvoke(null, null);
         }
 
         /// <summary>
@@ -322,6 +409,8 @@ namespace LH.Apps.RajceDownloader.Engine
         /// BeginInvoked. Exception should be handled immediately and in the offending thread.</remarks>
         private void HandleDownloadException(Exception ex)
         {
+            DisposeAsyncState();
+
             MethodInvoker async;
             switch (Program.PromptSink.Error(ex.Message, MessageBoxButtons.AbortRetryIgnore))
             {
@@ -350,24 +439,29 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (ar == null)
                 return;
-            AsyncState state = ar.AsyncState as AsyncState;
-            if (state == null)
+            if (asyncState == null)
                 return;
 
             try
             {
-                state.Response = state.Request.EndGetResponse(ar);
-                if (state.Response != null)
+                asyncState.Response = asyncState.Request.EndGetResponse(ar);
+                if (asyncState.Response != null)
                 {
-                    state.ResponseStream = state.Response.GetResponseStream();
-                    state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
-                        new AsyncCallback(ResponseReadCallback), state);
+                    asyncState.ResponseStream = asyncState.Response.GetResponseStream();
+                    asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
+                        new AsyncCallback(ResponseReadCallback), null);
+                    state = DownloaderState.Downloading;
                 }
+            }
+            catch (WebException ex)
+            {
+                if (abort)
+                    HandleAsyncAbort();
+                else
+                    HandleDownloadException(ex);
             }
             catch (Exception ex)
             {
-                state.Dispose();
-                state = null;
                 HandleDownloadException(ex);
             }
         }
@@ -380,37 +474,41 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (ar == null)
                 return;
-            AsyncState state = ar.AsyncState as AsyncState;
-            if (state == null)
+            if (asyncState == null)
                 return;
 
-            if (state.ResponseStream != null)
+            if (asyncState.ResponseStream != null)
                 try
                 {
-                    int read = state.ResponseStream.EndRead(ar);
+                    int read = asyncState.ResponseStream.EndRead(ar);
                     if (read > 0)
                     {
-                        if (state.FileStream != null)
-                            state.FileStream.Write(state.Buffer, 0, read);
-                        state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
-                            new AsyncCallback(ResponseReadCallback), state);
+                        if (asyncState.FileStream != null)
+                            asyncState.FileStream.Write(asyncState.Buffer, 0, read);
+                        asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
+                            new AsyncCallback(ResponseReadCallback), null);
                     }
                     else
-                    {
-                        state.Dispose();
-                        state = null;
-                        MethodInvoker async = () => BeginDownloadNextPhoto();
-                        async.BeginInvoke(null, null);
-                    }
+                        try
+                        {
+                            asyncState.Dispose();
+                            asyncState = null;
+                        }
+                        finally
+                        {
+                            MethodInvoker async = () => BeginDownloadNextPhoto();
+                            async.BeginInvoke(null, null);
+                        }
+                }
+                catch (WebException ex)
+                {
+                    if (abort)
+                        HandleAsyncAbort();
+                    else
+                        HandleDownloadException(ex);
                 }
                 catch (Exception ex)
                 {
-                    if (state != null)
-                    {
-                        //state might have got already disposed
-                        state.Dispose();
-                        state = null;
-                    }
                     HandleDownloadException(ex);
                 }
         }

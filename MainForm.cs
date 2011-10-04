@@ -217,7 +217,7 @@ namespace LH.Apps.RajceDownloader
 
         private void button1_Click(object sender, EventArgs e)
         {
-//            pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_2/");
+            //pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_1/");
             pageParser = new PageParser("file:///C:/Temp/album.html");
             pageParser.Finished += new EventHandler(pageParser_Finished);
             pageParser.BeginDownloadAndParse();
@@ -238,7 +238,6 @@ namespace LH.Apps.RajceDownloader
 
             if (photos.Length > 0)
             {
-
                 downloader = new Downloader();
                 downloader.AddPhotos(photos);
                 downloader.BeginDownload();
@@ -264,6 +263,12 @@ namespace LH.Apps.RajceDownloader
             if (downloader == null)
                 return;
             Invoke(new MethodInvoker(() => button1.Enabled = true));
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (downloader != null)
+                downloader.Abort();
         }
     }
 }
