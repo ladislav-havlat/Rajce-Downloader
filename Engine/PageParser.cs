@@ -40,9 +40,14 @@ namespace LH.Apps.RajceDownloader.Engine
             /// Temporary buffer used for data transfer.
             /// </summary>
             public byte[] Buffer;
-
-            public MemoryStream pageData;
-            public Encoding pageDataEncoding;
+            /// <summary>
+            /// String decoder for the downloaded data.
+            /// </summary>
+            public Decoder Decoder;
+            /// <summary>
+            /// Contains the received data.
+            /// </summary>
+            public StringBuilder Data;
 
             /// <summary>
             /// Initializes a new instance of DownloadState.
@@ -50,6 +55,7 @@ namespace LH.Apps.RajceDownloader.Engine
             public AsyncState()
             {
                 Buffer = new byte[BufferSize];
+                Data = new StringBuilder();
             }
 
             public void Dispose()
@@ -249,18 +255,26 @@ namespace LH.Apps.RajceDownloader.Engine
                 if (asyncState.Response != null)
                 {
                     asyncState.ResponseStream = asyncState.Response.GetResponseStream();
-
                     int length = (int)asyncState.Response.ContentLength;
-                    if (length > 0)
-                    {
-                        asyncState.pageData = new MemoryStream(length);
-                        Program.StatusSink.BeginOperation(0, length, Properties.Resources.Status_DownloadingPage);
-                    }
-                    else
-                    {
-                        asyncState.pageData = new MemoryStream();
-                        Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_DownloadingPage);
-                    }
+                    Program.StatusSink.BeginOperation(
+                        0, 
+                        length > 0 ? length : 0, 
+                        Properties.Resources.Status_DownloadingPage
+                        );
+
+                    //try to get the encoding of the data or use UTF-8 by default
+                    HttpWebResponse httpResponse = asyncState.Response as HttpWebResponse;
+                    Encoding encoding = Encoding.UTF8;
+                    if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
+                        try
+                        {
+                            Encoding.GetEncoding(httpResponse.ContentEncoding);
+                        }
+                        catch (ArgumentException)
+                        {
+                            //use default
+                        }
+                    asyncState.Decoder = encoding.GetDecoder();
 
                     asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
                         new AsyncCallback(ReadPageCallback), null);
@@ -285,7 +299,6 @@ namespace LH.Apps.RajceDownloader.Engine
             if (asyncState == null)
                 return;
 
-            bool finished = false;
             try
             {
                 if (asyncState.ResponseStream != null)
@@ -293,34 +306,24 @@ namespace LH.Apps.RajceDownloader.Engine
                     int read = asyncState.ResponseStream.EndRead(ar);
                     if (read > 0)
                     {
-                        asyncState.pageData.Write(asyncState.Buffer, 0, read);
-                        if (asyncState.Response.ContentLength > 0)
-                            Program.StatusSink.StepProgressBar(read);
+                        int arraySize = asyncState.Decoder.GetCharCount(asyncState.Buffer, 0, read);
+                        char[] chars = new char[arraySize];
+                        int charCount = asyncState.Decoder.GetChars(asyncState.Buffer, 0, read, chars, 0, 
+                            false);
+                        asyncState.Data.Append(chars);
                         asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
                             new AsyncCallback(ReadPageCallback), null);
                     }
                     else
                     {
-                        //try to get the encoding of the data or use UTF-8 by default
-                        HttpWebResponse httpResponse = asyncState.Response as HttpWebResponse;
-                        if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
-                            asyncState.pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
-                        if (asyncState.pageDataEncoding == null)
-                            asyncState.pageDataEncoding = Encoding.UTF8;
-
-                        finished = true;
+                        MethodInvoker async = new MethodInvoker(() => ParsePage());
+                        async.BeginInvoke(null, null);
                     }
                 }
             }
             catch (Exception ex)
             {
                 HandleDownloadException(ex);
-            }
-
-            if (finished)
-            {
-                MethodInvoker async = new MethodInvoker(() => ParsePage());
-                async.BeginInvoke(null, null);
             }
         }
 
@@ -331,7 +334,7 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (asyncState == null)
                 return;
-            if (asyncState.pageData == null || asyncState.pageDataEncoding == null)
+            if (asyncState.Data == null)
                 return;
 
             try
@@ -339,9 +342,8 @@ namespace LH.Apps.RajceDownloader.Engine
                 Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_ParsingPage);
                 try
                 {
-                    byte[] pageDataArray = asyncState.pageData.ToArray();
-                    asyncState.pageData = null;
-                    string data = asyncState.pageDataEncoding.GetString(pageDataArray);
+                    string data = asyncState.Data.ToString();
+                    asyncState.Data = null;
 
                     Match storageMatch = s_storageRegex.Match(data);
                     if (storageMatch.Success)
