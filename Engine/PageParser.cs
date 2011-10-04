@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,7 +13,7 @@ using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader.Engine
 {
-    public class PageParser
+    public class PageParser : IEnumerable<string>
     {
         /// <summary>
         /// Passes download state between asynchronous calls.
@@ -95,6 +96,85 @@ namespace LH.Apps.RajceDownloader.Engine
             Parsing
         }
 
+        /// <summary>
+        /// Enumerator class for PageParser.
+        /// </summary>
+        private class PageParserEnumerator : IEnumerator<string>
+        {
+            private int currentIndex;
+            private PageParser pageParser;
+
+            /// <summary>
+            /// Initializes a new instance of PageParserEnumerator.
+            /// </summary>
+            /// <param name="aPageParser"></param>
+            public PageParserEnumerator(PageParser aPageParser)
+            {
+                currentIndex = 0;
+                pageParser = aPageParser;
+            }
+
+            /// <summary>
+            /// Gets the current object the enumerator points to.
+            /// </summary>
+            public string Current
+            {
+                get 
+                {
+                    if (pageParser.state == PageParserState.Idle)
+                        return pageParser.photos[currentIndex];
+                    else
+                        throw new InvalidOperationException(Properties.Resources.Error_ParserIsBusy);
+                }
+            }
+
+            /// <summary>
+            /// Disposes the unmanaged resources used by the object.
+            /// </summary>
+            public void Dispose()
+            {
+            }
+
+            /// <summary>
+            /// Gets the current object the enumerator points to.
+            /// </summary>
+            object IEnumerator.Current
+            {
+                get 
+                {
+                    return Current;
+                }
+            }
+
+            /// <summary>
+            /// Moves to the next object in the list.
+            /// </summary>
+            /// <returns></returns>
+            public bool MoveNext()
+            {
+                if (pageParser.State == PageParserState.Idle)
+                {
+                    if (currentIndex < pageParser.photos.Count - 1)
+                    {
+                        currentIndex++;
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else
+                    throw new InvalidOperationException(Properties.Resources.Error_ParserIsBusy);
+            }
+
+            /// <summary>
+            /// Resets internal state of the enumerator to the first object.
+            /// </summary>
+            public void Reset()
+            {
+                currentIndex = 0;
+            }
+        }
+
         #region Static fields
         private static Regex s_fileRegex;
         private static Regex s_photosRegex;
@@ -140,11 +220,11 @@ namespace LH.Apps.RajceDownloader.Engine
         public event EventHandler Finished;
 
         /// <summary>
-        /// Access to the URL list.
+        /// State of the downloader + parser.
         /// </summary>
-        public List<string> PhotosURLs
+        public PageParserState State
         {
-            get { return photos; }
+            get { return state; }
         }
         #endregion
 
@@ -156,6 +236,26 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             if (Finished != null)
                 Finished(this, new EventArgs());
+        }
+        #endregion
+
+        #region IEnumerable Members
+        /// <summary>
+        /// Returns the enumerator for this enumerable object.
+        /// </summary>
+        /// <returns>The enumerator for this enumerable object.</returns>
+        public IEnumerator<string> GetEnumerator()
+        {
+            return new PageParserEnumerator(this);
+        }
+
+        /// <summary>
+        /// Returns the enumerator for this enumerable object.
+        /// </summary>
+        /// <returns>The enumerator for this enumerable object.</returns>
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return new PageParserEnumerator(this);
         }
         #endregion
 
@@ -184,6 +284,9 @@ namespace LH.Apps.RajceDownloader.Engine
             asyncState.Request.BeginGetResponse(GetResponseCallback, null);
         }
 
+        /// <summary>
+        /// Disposes the async state object and sets the reference to null.
+        /// </summary>
         private void DisposeAsyncState()
         {
             if (asyncState != null)
@@ -193,6 +296,11 @@ namespace LH.Apps.RajceDownloader.Engine
             }
         }
 
+        /// <summary>
+        /// Method to be called when the operation has ended, either successfully or unsuccessfully.
+        /// </summary>
+        /// <remarks>This method directly calls OnFinished event invoker, so it should be 
+        /// always BeginInvoke'd.</remarks>
         private void Done()
         {
             try

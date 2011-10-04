@@ -106,6 +106,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Nelze přistupovat k seznamu fotek, pokud parser stále pracuje..
+        /// </summary>
+        internal static string Error_ParserIsBusy {
+            get {
+                return ResourceManager.GetString("Error_ParserIsBusy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Nelze načíst seznam fotek..
         /// </summary>
         internal static string Error_PhotosParseError {

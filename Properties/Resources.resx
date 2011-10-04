@@ -168,4 +168,7 @@
   <data name="Status_DownloadingFile" xml:space="preserve">
     <value>Stahování souboru: {0}</value>
   </data>
+  <data name="Error_ParserIsBusy" xml:space="preserve">
+    <value>Nelze přistupovat k seznamu fotek, pokud parser stále pracuje.</value>
+  </data>
 </root>
