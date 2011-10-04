@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using LH.Apps.RajceDownloader.Engine;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Diagnostics;
 
 namespace LH.Apps.RajceDownloader
 {
@@ -21,6 +22,7 @@ namespace LH.Apps.RajceDownloader
         {
             InitializeComponent();
             SetStatusText(null);
+            EnableUI(false);
         }
 
         #region IStatusSink Members
@@ -215,6 +217,13 @@ namespace LH.Apps.RajceDownloader
 
         #endregion
 
+        private void EnableUI(bool busy)
+        {
+            button1.Enabled = !busy;
+            button2.Enabled = busy;
+            textBox1.Enabled = !busy;
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
             pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_1/");
@@ -241,17 +250,6 @@ namespace LH.Apps.RajceDownloader
                 downloader.AddPhotos(photos);
                 downloader.BeginDownload();
                 downloader.Finished += new EventHandler(downloader_Finished);
-
-                MethodInvoker sync = new MethodInvoker(delegate()
-                    {
-                        listBox.Items.Clear();
-                        listBox.Items.AddRange(photos);
-                    }
-                );
-                if (InvokeRequired)
-                    Invoke(sync);
-                else
-                    sync();
             }
             else
                 Invoke(new MethodInvoker(() => button1.Enabled = true));
@@ -268,6 +266,27 @@ namespace LH.Apps.RajceDownloader
         {
             if (downloader != null)
                 downloader.Abort();
+        }
+
+        private void textBox1_Enter(object sender, EventArgs e)
+        {
+            if (textBox1.Tag == null)
+            {
+                textBox1.ForeColor = SystemColors.WindowText;
+                textBox1.Font = Font;
+                textBox1.Text = string.Empty;
+                textBox1.Tag = new object();
+            }
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void rajceLogo_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start("http://rajce.idnes.cz/");
         }
     }
 }

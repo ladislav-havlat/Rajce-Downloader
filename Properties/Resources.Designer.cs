@@ -186,6 +186,13 @@ namespace LH.Apps.RajceDownloader.Properties {
             }
         }
         
+        internal static System.Drawing.Bitmap rajce_net_100 {
+            get {
+                object obj = ResourceManager.GetObject("rajce_net_100", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
         /// <summary>
         ///   Looks up a localized string similar to Stahování souboru: {0}.
         /// </summary>
