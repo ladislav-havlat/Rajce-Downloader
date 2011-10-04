@@ -229,11 +229,11 @@ namespace LH.Apps.RajceDownloader
             if (pageParser == null)
                 return;
 
-            Photo[] photos;
-            photos = (from string URL in pageParser
-                      select new Photo(URL, Path.GetFileName(URL)))
-                      .ToArray();
-            pageParser = null;
+            var photos = pageParser.Select(p =>
+                {
+                    p.TargetPath = Path.GetFileName(p.SourceURL);
+                    return p;
+                }).ToArray();
 
             if (photos.Length > 0)
             {

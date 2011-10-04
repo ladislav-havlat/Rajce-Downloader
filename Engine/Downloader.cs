@@ -10,41 +10,6 @@ using System.ComponentModel;
 namespace LH.Apps.RajceDownloader.Engine
 {
     /// <summary>
-    /// Represents a photo to be downloaded.
-    /// </summary>
-    public class Photo
-    {
-        /// <summary>
-        /// The URL of the original file.
-        /// </summary>
-        public readonly string URL;
-        /// <summary>
-        /// The file to be the photo saved into.
-        /// </summary>
-        public readonly string Target;
-
-        /// <summary>
-        /// Initializes a new instance of Photo.
-        /// </summary>
-        /// <param name="aURL">The URL of the original file.</param>
-        /// <param name="aTarget">The file to be the photo saved into.</param>
-        public Photo(string aURL, string aTarget)
-        {
-            URL = aURL;
-            Target = aTarget;
-        }
-
-        /// <summary>
-        /// Returns a string representation of this object.
-        /// </summary>
-        /// <returns>A string representation of this object.</returns>
-        public override string ToString()
-        {
-            return Path.GetFileName(URL);
-        }
-    }
-
-    /// <summary>
     /// Provides a batch photo downloader with error handling.
     /// </summary>
     public class Downloader
@@ -315,7 +280,7 @@ namespace LH.Apps.RajceDownloader.Engine
                 currentPhoto++;
                 Program.StatusSink.SetStatusText(string.Format(
                     Properties.Resources.Status_DownloadingFile,
-                    Path.GetFileName(photos[currentPhoto].URL)
+                    Path.GetFileName(photos[currentPhoto].SourceURL)
                     ));
                 Program.StatusSink.SetProgressBarPos(currentPhoto);
                 BeginDownloadPhoto(currentPhoto);
@@ -343,7 +308,7 @@ namespace LH.Apps.RajceDownloader.Engine
             asyncState.Photo = photos[photoIndex];
             try
             {
-                string fileName = Path.GetFullPath(asyncState.Photo.Target);
+                string fileName = Path.GetFullPath(asyncState.Photo.TargetPath);
                 if (File.Exists(fileName))
                 {
                     //TODO: workaround for a directory with that name...
@@ -376,7 +341,7 @@ namespace LH.Apps.RajceDownloader.Engine
                 }
 
                 asyncState.FileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
-                asyncState.Request = WebRequest.Create(asyncState.Photo.URL);
+                asyncState.Request = WebRequest.Create(asyncState.Photo.SourceURL);
                 if (!abort)
                 {
                     asyncState.Request.BeginGetResponse(new AsyncCallback(GetResponseCallback), null);

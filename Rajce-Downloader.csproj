@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="Engine\Downloader.cs" />
     <Compile Include="Engine\PageParser.cs" />
+    <Compile Include="Engine\Photo.cs" />
     <Compile Include="IPromptSink.cs" />
     <Compile Include="IStatusSink.cs" />
     <Compile Include="MainForm.cs">

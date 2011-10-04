@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader.Engine
 {
-    public class PageParser : IEnumerable<string>
+    public class PageParser : IEnumerable<Photo>
     {
         /// <summary>
         /// Passes download state between asynchronous calls.
@@ -99,7 +99,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <summary>
         /// Enumerator class for PageParser.
         /// </summary>
-        private class PageParserEnumerator : IEnumerator<string>
+        private class PageParserEnumerator : IEnumerator<Photo>
         {
             private int currentIndex;
             private PageParser pageParser;
@@ -117,7 +117,7 @@ namespace LH.Apps.RajceDownloader.Engine
             /// <summary>
             /// Gets the current object the enumerator points to.
             /// </summary>
-            public string Current
+            public Photo Current
             {
                 get 
                 {
@@ -199,7 +199,7 @@ namespace LH.Apps.RajceDownloader.Engine
 
         private AsyncState asyncState;
         private string pageURL;
-        private List<string> photos;
+        private List<Photo> photos;
         private PageParserState state;
 
         /// <summary>
@@ -210,7 +210,7 @@ namespace LH.Apps.RajceDownloader.Engine
         {
             state = PageParserState.Idle;
             pageURL = aPageURL;
-            photos = new List<string>();
+            photos = new List<Photo>();
         }
 
         #region Public properties and events
@@ -244,7 +244,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// Returns the enumerator for this enumerable object.
         /// </summary>
         /// <returns>The enumerator for this enumerable object.</returns>
-        public IEnumerator<string> GetEnumerator()
+        public IEnumerator<Photo> GetEnumerator()
         {
             return new PageParserEnumerator(this);
         }
@@ -468,8 +468,8 @@ namespace LH.Apps.RajceDownloader.Engine
                             while (fileMatch.Success)
                             {
                                 string fileName = fileMatch.Groups[1].Value;
-                                lock (photos)
-                                    photos.Add(string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName));
+                                string sourceURL = string.Format(Properties.Resources.Parser_PhotoURL, storage, fileName);
+                                photos.Add(new Photo(sourceURL));
                                 fileMatch = fileMatch.NextMatch();
                             }
                         } //if (photosMatch.Success)
