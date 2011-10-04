@@ -41,6 +41,9 @@ namespace LH.Apps.RajceDownloader.Engine
             /// </summary>
             public byte[] Buffer;
 
+            public MemoryStream pageData;
+            public Encoding pageDataEncoding;
+
             /// <summary>
             /// Initializes a new instance of DownloadState.
             /// </summary>
@@ -53,10 +56,37 @@ namespace LH.Apps.RajceDownloader.Engine
             {
                 if (ResponseStream != null)
                 {
-                    ResponseStream.Dispose();
+                    ResponseStream.Close();
                     ResponseStream = null;
                 }
             }
+        }
+
+        /// <summary>
+        /// Determines the state of a PageParser.
+        /// </summary>
+        public enum PageParserState
+        {
+            /// <summary>
+            /// The PageParser is idle and ready for commands.
+            /// </summary>
+            Idle,
+            /// <summary>
+            /// The PageParser is preparing a request to be sent.
+            /// </summary>
+            Started,
+            /// <summary>
+            /// The PageParser has sent the request and is waiting for a response.
+            /// </summary>
+            RequestSent,
+            /// <summary>
+            /// The PageParser is downloading the page.
+            /// </summary>
+            Downloading,
+            /// <summary>
+            /// The PageParser is parsing the page.
+            /// </summary>
+            Parsing
         }
 
         #region Static fields
@@ -81,10 +111,10 @@ namespace LH.Apps.RajceDownloader.Engine
         }
         #endregion
 
-        private MemoryStream pageData;
-        private Encoding pageDataEncoding;
+        private AsyncState asyncState;
         private string pageURL;
         private List<string> photos;
+        private PageParserState state;
 
         /// <summary>
         /// Initializes a new instance of PageParser.
@@ -92,6 +122,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="aPageURL">URL of the album page to be parsed.</param>
         public PageParser(string aPageURL)
         {
+            state = PageParserState.Idle;
             pageURL = aPageURL;
             photos = new List<string>();
         }
@@ -127,15 +158,47 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void BeginDownloadAndParse()
         {
+            state = PageParserState.Started;   
+            MethodInvoker async = () => BeginDownloadPage();
+            async.BeginInvoke(null, null);
+        }
+
+        /// <summary>
+        /// Prepares the request and sends it to the server.
+        /// </summary>
+        private void BeginDownloadPage()
+        {
             lock (photos)
                 photos.Clear();
-            pageData = null;
-            pageDataEncoding = null;
 
-            AsyncState state = new AsyncState();
-            state.Request = HttpWebRequest.Create(pageURL);
-            state.Request.BeginGetResponse(GetResponseCallback, state);
+            asyncState = new AsyncState();
+            asyncState.Request = HttpWebRequest.Create(pageURL);
+            state = PageParserState.RequestSent;
             Program.StatusSink.SetStatusText(Properties.Resources.Status_DownloadingPage);
+            asyncState.Request.BeginGetResponse(GetResponseCallback, null);
+        }
+
+        private void DisposeAsyncState()
+        {
+            if (asyncState != null)
+            {
+                asyncState.Dispose();
+                asyncState = null;
+            }
+        }
+
+        private void Done()
+        {
+            try
+            {
+                DisposeAsyncState();
+                Program.StatusSink.EndOperation();
+                state = PageParserState.Idle;
+            }
+            finally
+            {
+                OnFinished();
+            }
         }
 
         /// <summary>
@@ -144,6 +207,8 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="ex">The exception object to be the message got from.</param>
         private void HandleDownloadException(Exception ex)
         {
+            DisposeAsyncState();
+
             DialogResult dr = Program.PromptSink.Error(
                 string.Format(
                     Properties.Resources.Error_DownloadPage,
@@ -156,12 +221,13 @@ namespace LH.Apps.RajceDownloader.Engine
             switch (dr)
             {
                 case DialogResult.Retry:
-                    async = () => BeginDownloadAndParse();
+                    async = () => BeginDownloadPage();
                     async.BeginInvoke(null, null);
                     break;
 
                 case DialogResult.Cancel:
-                    Program.StatusSink.EndOperation();
+                    async = () => Done();
+                    async.BeginInvoke(null, null);
                     break;
             }
         }
@@ -172,39 +238,38 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="ar">Async parameter object.</param>
         public void GetResponseCallback(IAsyncResult ar)
         {
-            AsyncState state = ar.AsyncState as AsyncState;
-            if (state == null)
+            if (ar == null)
+                return;
+            if (asyncState == null)
                 return;
 
             try
             {
-                state.Response = state.Request.EndGetResponse(ar);
-                if (state.Response != null)
+                asyncState.Response = asyncState.Request.EndGetResponse(ar);
+                if (asyncState.Response != null)
                 {
-                    state.ResponseStream = state.Response.GetResponseStream();
+                    asyncState.ResponseStream = asyncState.Response.GetResponseStream();
 
-                    int length = (int)state.Response.ContentLength;
+                    int length = (int)asyncState.Response.ContentLength;
                     if (length > 0)
                     {
-                        pageData = new MemoryStream(length);
+                        asyncState.pageData = new MemoryStream(length);
                         Program.StatusSink.BeginOperation(0, length, Properties.Resources.Status_DownloadingPage);
                     }
                     else
                     {
-                        pageData = new MemoryStream();
+                        asyncState.pageData = new MemoryStream();
                         Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_DownloadingPage);
                     }
 
-                    state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
-                        new AsyncCallback(ReadPageCallback), state);
+                    asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
+                        new AsyncCallback(ReadPageCallback), null);
                 }
                 else
                     Program.StatusSink.EndOperation();
             }
             catch (Exception ex)
             {
-                state.Dispose();
-                state = null;
                 HandleDownloadException(ex);
             }
         }
@@ -215,48 +280,40 @@ namespace LH.Apps.RajceDownloader.Engine
         /// <param name="ar">Async parameter object.</param>
         private void ReadPageCallback(IAsyncResult ar)
         {
-            AsyncState state = ar.AsyncState as AsyncState;
-            if (state == null)
+            if (ar == null)
+                return;
+            if (asyncState == null)
                 return;
 
             bool finished = false;
             try
             {
-                if (state.ResponseStream != null)
+                if (asyncState.ResponseStream != null)
                 {
-                    int read = state.ResponseStream.EndRead(ar);
+                    int read = asyncState.ResponseStream.EndRead(ar);
                     if (read > 0)
                     {
-                        pageData.Write(state.Buffer, 0, read);
-                        if (state.Response.ContentLength > 0)
+                        asyncState.pageData.Write(asyncState.Buffer, 0, read);
+                        if (asyncState.Response.ContentLength > 0)
                             Program.StatusSink.StepProgressBar(read);
-                        state.ResponseStream.BeginRead(state.Buffer, 0, state.Buffer.Length,
-                            new AsyncCallback(ReadPageCallback), state);
+                        asyncState.ResponseStream.BeginRead(asyncState.Buffer, 0, asyncState.Buffer.Length,
+                            new AsyncCallback(ReadPageCallback), null);
                     }
                     else
-                        try
-                        {
-                            //try to get the encoding of the data or use UTF-8 by default
-                            HttpWebResponse httpResponse = state.Response as HttpWebResponse;
-                            if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
-                                pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
-                            if (pageDataEncoding == null)
-                                pageDataEncoding = Encoding.UTF8;
+                    {
+                        //try to get the encoding of the data or use UTF-8 by default
+                        HttpWebResponse httpResponse = asyncState.Response as HttpWebResponse;
+                        if (httpResponse != null && !string.IsNullOrEmpty(httpResponse.ContentEncoding))
+                            asyncState.pageDataEncoding = Encoding.GetEncoding(httpResponse.ContentEncoding);
+                        if (asyncState.pageDataEncoding == null)
+                            asyncState.pageDataEncoding = Encoding.UTF8;
 
-                            finished = true;
-                        }
-                        finally
-                        {
-                            state.Dispose();
-                            state = null;
-                            Program.StatusSink.EndOperation();
-                        }
+                        finished = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                state.Dispose();
-                state = null;
                 HandleDownloadException(ex);
             }
 
@@ -272,7 +329,9 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         private void ParsePage()
         {
-            if (pageData == null || pageDataEncoding == null)
+            if (asyncState == null)
+                return;
+            if (asyncState.pageData == null || asyncState.pageDataEncoding == null)
                 return;
 
             try
@@ -280,9 +339,9 @@ namespace LH.Apps.RajceDownloader.Engine
                 Program.StatusSink.BeginOperation(0, 0, Properties.Resources.Status_ParsingPage);
                 try
                 {
-                    byte[] pageDataArray = pageData.ToArray();
-                    pageData = null;
-                    string data = pageDataEncoding.GetString(pageDataArray);
+                    byte[] pageDataArray = asyncState.pageData.ToArray();
+                    asyncState.pageData = null;
+                    string data = asyncState.pageDataEncoding.GetString(pageDataArray);
 
                     Match storageMatch = s_storageRegex.Match(data);
                     if (storageMatch.Success)
@@ -320,12 +379,8 @@ namespace LH.Apps.RajceDownloader.Engine
             }
             finally
             {
-                pageData = null;
-                pageDataEncoding = null;
-                Program.StatusSink.EndOperation();
+                Done();
             }
-
-            OnFinished();
         }
     }
 }

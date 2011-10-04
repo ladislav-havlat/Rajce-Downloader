@@ -217,8 +217,8 @@ namespace LH.Apps.RajceDownloader
 
         private void button1_Click(object sender, EventArgs e)
         {
-            //pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_1/");
-            pageParser = new PageParser("file:///C:/Temp/album.html");
+            pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_1/");
+            //pageParser = new PageParser("file:///C:/Temp/album.html");
             pageParser.Finished += new EventHandler(pageParser_Finished);
             pageParser.BeginDownloadAndParse();
             button1.Enabled = false;
