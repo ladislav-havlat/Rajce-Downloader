@@ -151,6 +151,8 @@
             // 
             // selectTargetDirButton
             // 
+            this.selectTargetDirButton.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                        | System.Windows.Forms.AnchorStyles.Right)));
             this.selectTargetDirButton.Location = new System.Drawing.Point(419, 24);
             this.selectTargetDirButton.Name = "selectTargetDirButton";
             this.selectTargetDirButton.Size = new System.Drawing.Size(28, 20);
@@ -183,8 +185,8 @@
             this.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
-            this.MaximumSize = new System.Drawing.Size(10000, 400);
-            this.MinimumSize = new System.Drawing.Size(500, 194);
+            this.MaximumSize = new System.Drawing.Size(10000, 256);
+            this.MinimumSize = new System.Drawing.Size(500, 256);
             this.Name = "MainForm";
             this.Text = "Rajče Downloader";
             this.toolbarStrip.ResumeLayout(false);
