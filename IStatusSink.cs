@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace LH.Apps.RajceDownloader
+﻿namespace LH.Apps.RajceDownloader
 {
     /// <summary>
     /// Represents an object capable of displaying the status of the program.
