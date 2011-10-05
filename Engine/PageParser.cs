@@ -197,6 +197,7 @@ namespace LH.Apps.RajceDownloader.Engine
         }
         #endregion
 
+        private bool abort;
         private AsyncState asyncState;
         private string pageURL;
         private List<Photo> photos;
@@ -264,6 +265,7 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void BeginDownloadAndParse()
         {
+            abort = false;
             state = PageParserState.Started;   
             MethodInvoker async = () => BeginDownloadPage();
             async.BeginInvoke(null, null);
@@ -274,6 +276,24 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         public void Abort()
         {
+            if (state != PageParserState.Idle)
+            {
+                abort = true;
+                switch (state)
+                {
+                    case PageParserState.RequestSent:
+                        if (asyncState != null)
+                            if (asyncState.Request != null)
+                                asyncState.Request.Abort();
+                        break;
+
+                    case PageParserState.Downloading:
+                        if (asyncState != null)
+                            if (asyncState.ResponseStream != null)
+                                asyncState.ResponseStream.Close();
+                        break;
+                }
+            }
         }
 
         /// <summary>
@@ -281,6 +301,12 @@ namespace LH.Apps.RajceDownloader.Engine
         /// </summary>
         private void BeginDownloadPage()
         {
+            if (abort)
+            {
+                HandleAsyncAbort();
+                return;
+            }
+
             lock (photos)
                 photos.Clear();
 
@@ -320,6 +346,16 @@ namespace LH.Apps.RajceDownloader.Engine
             {
                 OnFinished();
             }
+        }
+
+        /// <summary>
+        /// Handles an abort condition encountered in the async phase. Cleans up async state and invokes Done().
+        /// </summary>
+        private void HandleAsyncAbort()
+        {
+            DisposeAsyncState();
+            MethodInvoker async = () => Done();
+            async.BeginInvoke(null, null);
         }
 
         /// <summary>
@@ -372,8 +408,8 @@ namespace LH.Apps.RajceDownloader.Engine
                     asyncState.ResponseStream = asyncState.Response.GetResponseStream();
                     int length = (int)asyncState.Response.ContentLength;
                     Program.StatusSink.BeginOperation(
-                        0, 
-                        length > 0 ? length : 0, 
+                        0,
+                        length > 0 ? length : 0,
                         Properties.Resources.Status_DownloadingPage
                         );
 
@@ -396,6 +432,13 @@ namespace LH.Apps.RajceDownloader.Engine
                 }
                 else
                     Program.StatusSink.EndOperation();
+            }
+            catch (WebException ex)
+            {
+                if (abort)
+                    HandleAsyncAbort();
+                else
+                    HandleDownloadException(ex);
             }
             catch (Exception ex)
             {
@@ -436,6 +479,13 @@ namespace LH.Apps.RajceDownloader.Engine
                     }
                 }
             }
+            catch (WebException ex)
+            {
+                if (abort)
+                    HandleAsyncAbort();
+                else
+                    HandleDownloadException(ex);
+            }
             catch (Exception ex)
             {
                 HandleDownloadException(ex);
@@ -451,6 +501,12 @@ namespace LH.Apps.RajceDownloader.Engine
                 return;
             if (asyncState.Data == null)
                 return;
+
+            if (abort)
+            {
+                HandleAsyncAbort();
+                return;
+            }
 
             try
             {

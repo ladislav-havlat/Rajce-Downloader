@@ -14,6 +14,7 @@ namespace LH.Apps.RajceDownloader
 {
     public partial class MainForm : Form, IStatusSink, IPromptSink
     {
+        private IAbortible abortible;
         private Downloader downloader;
         private PageParser pageParser;
 
@@ -221,6 +222,7 @@ namespace LH.Apps.RajceDownloader
             //pageParser = new PageParser("file:///C:/Temp/album.html");
             pageParser.Finished += new EventHandler(pageParser_Finished);
             pageParser.BeginDownloadAndParse();
+            abortible = pageParser;
             button1.Enabled = false;
         }
 
@@ -238,9 +240,10 @@ namespace LH.Apps.RajceDownloader
             if (photos.Length > 0)
             {
                 downloader = new Downloader();
+                abortible = downloader;
                 downloader.AddPhotos(photos);
-                downloader.BeginDownload();
                 downloader.Finished += new EventHandler(downloader_Finished);
+                downloader.BeginDownload();
 
                 MethodInvoker sync = new MethodInvoker(delegate()
                     {
@@ -259,6 +262,7 @@ namespace LH.Apps.RajceDownloader
 
         private void downloader_Finished(object sender, EventArgs e)
         {
+            abortible = null;
             if (downloader == null)
                 return;
             Invoke(new MethodInvoker(() => button1.Enabled = true));
@@ -266,8 +270,8 @@ namespace LH.Apps.RajceDownloader
 
         private void button2_Click(object sender, EventArgs e)
         {
-            if (downloader != null)
-                downloader.Abort();
+            if (abortible != null)
+                abortible.Abort();
         }
     }
 }
