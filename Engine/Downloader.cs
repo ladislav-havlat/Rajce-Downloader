@@ -12,7 +12,7 @@ namespace LH.Apps.RajceDownloader.Engine
     /// <summary>
     /// Provides a batch photo downloader with error handling.
     /// </summary>
-    public class Downloader
+    public class Downloader : IAbortible
     {
         /// <summary>
         /// Object used to pass async state between async calls.

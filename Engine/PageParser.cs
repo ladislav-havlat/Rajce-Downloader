@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 
 namespace LH.Apps.RajceDownloader.Engine
 {
-    public class PageParser : IEnumerable<Photo>
+    public class PageParser : IEnumerable<Photo>, IAbortible
     {
         /// <summary>
         /// Passes download state between asynchronous calls.
@@ -267,6 +267,13 @@ namespace LH.Apps.RajceDownloader.Engine
             state = PageParserState.Started;   
             MethodInvoker async = () => BeginDownloadPage();
             async.BeginInvoke(null, null);
+        }
+
+        /// <summary>
+        /// Aborts the pending operation.
+        /// </summary>
+        public void Abort()
+        {
         }
 
         /// <summary>
