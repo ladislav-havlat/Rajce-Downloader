@@ -18,12 +18,15 @@ namespace LH.Apps.RajceDownloader
         private IAbortible abortible;
         private Downloader downloader;
         private PageParser pageParser;
+        private string targetDir;
 
         public MainForm()
         {
             InitializeComponent();
             SetStatusText(null);
             EnableUI(false);
+
+            Application.Idle += new EventHandler(Application_Idle);
         }
 
         #region IStatusSink Members
@@ -218,34 +221,113 @@ namespace LH.Apps.RajceDownloader
 
         #endregion
 
-        private void EnableUI(bool busy)
+        private void Application_Idle(object sender, EventArgs e)
         {
-            button1.Enabled = !busy;
-            button2.Enabled = busy;
-            textBox1.Enabled = !busy;
+            UpdateUIEnabledState();
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void UpdateUIEnabledState()
         {
-            pageParser = new PageParser("http://magicontrol.rajce.idnes.cz/Vystavba_kanalizace_Vladislav_1/");
-            //pageParser = new PageParser("file:///C:/Temp/album.html");
-            pageParser.Finished += new EventHandler(pageParser_Finished);
-            pageParser.BeginDownloadAndParse();
-            abortible = pageParser;
-            button1.Enabled = false;
+            MethodInvoker sync = delegate()
+            {
+                bool busy = (abortible != null);
+                startDownloadButton.Enabled = !busy;
+                pageURLTextBox.Enabled = !busy;
+                targetDirTextBox.Enabled = !busy;
+                selectTargetDirButton.Enabled = !busy;
+                abortButton.Enabled = busy;
+            };
+
+            if (InvokeRequired)
+                Invoke(sync);
+            else
+                sync();
+        }
+
+        private void EnableUI(bool busy)
+        {
+            startDownloadButton.Enabled = !busy;
+            abortButton.Enabled = busy;
+            pageURLTextBox.Enabled = !busy;
+        }
+
+        private void startDownloadButton_Click(object sender, EventArgs e)
+        {
+            if (pageURLTextBox.Tag != null)
+            {
+                targetDir = targetDirTextBox.Text;
+                if (string.IsNullOrEmpty(targetDir))
+                {
+                    MessageBox.Show(
+                        Properties.Resources.MainForm_NoTargetDirSpecified,
+                        Properties.Resources.Caption_Generic,
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                        );
+                    return;
+                }
+
+                if (!Directory.Exists(targetDir))
+                {
+                    DialogResult dr = MessageBox.Show(
+                        Properties.Resources.MainForm_TargetDirDoesntExist,
+                        Properties.Resources.Caption_Generic,
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question
+                        );
+
+                    switch (dr)
+                    {
+                        case DialogResult.Yes:
+                            try
+                            {
+                                Directory.CreateDirectory(targetDir);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(
+                                    string.Format(
+                                        Properties.Resources.Error_CannotCreateDir,
+                                        ex.Message
+                                        ),
+                                    Properties.Resources.Caption_Generic,
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Error
+                                    );
+                            }
+                            break;
+
+                        case DialogResult.No:
+                            return;                            
+                    }
+                }
+
+                pageParser = new PageParser(pageURLTextBox.Text);
+                pageParser.Finished += new EventHandler(pageParser_Finished);
+                pageParser.BeginDownloadAndParse();
+                abortible = pageParser;
+                UpdateUIEnabledState();
+            }
+            else
+            {
+                MessageBox.Show(
+                    Properties.Resources.Error_NoURLSpecified,
+                    Properties.Resources.Caption_Generic,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                    );
+            }
         }
 
         private void pageParser_Finished(object sender, EventArgs e)
         {
+            abortible = null;
             if (pageParser == null)
                 return;
 
-            var photos = pageParser.Select(p =>
-                {
-                    p.TargetPath = Path.GetFileName(p.SourceURL);
-                    return p;
-                }).ToArray();
-
+            Photo[] photos = pageParser.ToArray();
+            foreach (Photo p in photos)
+                p.TargetPath = Path.Combine(targetDir, Path.GetFileName(p.SourceURL));
             if (photos.Length > 0)
             {
                 downloader = new Downloader();
@@ -254,43 +336,41 @@ namespace LH.Apps.RajceDownloader
                 downloader.Finished += new EventHandler(downloader_Finished);
                 downloader.BeginDownload();
             }
-            else
-                Invoke(new MethodInvoker(() => button1.Enabled = true));
+            UpdateUIEnabledState();
         }
 
         private void downloader_Finished(object sender, EventArgs e)
         {
             abortible = null;
-            if (downloader == null)
-                return;
-            Invoke(new MethodInvoker(() => button1.Enabled = true));
+            UpdateUIEnabledState();
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void abortButton_Click(object sender, EventArgs e)
         {
             if (abortible != null)
                 abortible.Abort();
         }
 
-        private void textBox1_Enter(object sender, EventArgs e)
+        private void pageURLTextBox_Enter(object sender, EventArgs e)
         {
-            if (textBox1.Tag == null)
+            if (pageURLTextBox.Tag == null)
             {
-                textBox1.ForeColor = SystemColors.WindowText;
-                textBox1.Font = Font;
-                textBox1.Text = string.Empty;
-                textBox1.Tag = new object();
+                pageURLTextBox.ForeColor = SystemColors.WindowText;
+                pageURLTextBox.Font = Font;
+                pageURLTextBox.Text = string.Empty;
+                pageURLTextBox.Tag = new object();
             }
-        }
-
-        private void MainForm_Load(object sender, EventArgs e)
-        {
-
         }
 
         private void rajceLogo_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start("http://rajce.idnes.cz/");
+        }
+
+        private void selectTargetDirButton_Click(object sender, EventArgs e)
+        {
+            if (targetDirDialog.ShowDialog() == DialogResult.OK)
+                targetDirTextBox.Text = targetDirDialog.SelectedPath;
         }
     }
 }

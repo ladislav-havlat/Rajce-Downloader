@@ -79,6 +79,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Adresář nelze vytvořit. {0}.
+        /// </summary>
+        internal static string Error_CannotCreateDir {
+            get {
+                return ResourceManager.GetString("Error_CannotCreateDir", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Chyba při vytváření souboru: {0}.
         /// </summary>
         internal static string Error_CreateFile {
@@ -106,6 +115,15 @@ namespace LH.Apps.RajceDownloader.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Zadejte adresu webového alba (například zkopírováním z adresního řádku prohlížeče)..
+        /// </summary>
+        internal static string Error_NoURLSpecified {
+            get {
+                return ResourceManager.GetString("Error_NoURLSpecified", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Nelze přistupovat k seznamu fotek, pokud parser stále pracuje..
         /// </summary>
         internal static string Error_ParserIsBusy {
@@ -129,6 +147,24 @@ namespace LH.Apps.RajceDownloader.Properties {
         internal static string Error_StorageParseError {
             get {
                 return ResourceManager.GetString("Error_StorageParseError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nebyl zadán cílový adresář..
+        /// </summary>
+        internal static string MainForm_NoTargetDirSpecified {
+            get {
+                return ResourceManager.GetString("MainForm_NoTargetDirSpecified", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cílový adresář neexistuje. Chcete jej vytvořit?.
+        /// </summary>
+        internal static string MainForm_TargetDirDoesntExist {
+            get {
+                return ResourceManager.GetString("MainForm_TargetDirDoesntExist", resourceCulture);
             }
         }
         

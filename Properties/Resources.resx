@@ -175,4 +175,16 @@
   <data name="rajce_net_100" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\resources\rajce-net-100.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="Error_CannotCreateDir" xml:space="preserve">
+    <value>Adresář nelze vytvořit. {0}</value>
+  </data>
+  <data name="Error_NoURLSpecified" xml:space="preserve">
+    <value>Zadejte adresu webového alba (například zkopírováním z adresního řádku prohlížeče).</value>
+  </data>
+  <data name="MainForm_NoTargetDirSpecified" xml:space="preserve">
+    <value>Nebyl zadán cílový adresář.</value>
+  </data>
+  <data name="MainForm_TargetDirDoesntExist" xml:space="preserve">
+    <value>Cílový adresář neexistuje. Chcete jej vytvořit?</value>
+  </data>
 </root>
