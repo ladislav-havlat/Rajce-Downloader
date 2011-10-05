@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using LH.Apps.RajceDownloader.Engine;
-using System.Text.RegularExpressions;
-using System.IO;
-using System.Diagnostics;
 
 namespace LH.Apps.RajceDownloader
 {
+    /// <summary>
+    /// The main form class.
+    /// </summary>
     public partial class MainForm : Form, IStatusSink, IPromptSink
     {
         private IAbortible abortible;
@@ -20,11 +18,14 @@ namespace LH.Apps.RajceDownloader
         private PageParser pageParser;
         private string targetDir;
 
+        /// <summary>
+        /// Initializes a new instance of MainForm.
+        /// </summary>
         public MainForm()
         {
             InitializeComponent();
             SetStatusText(null);
-            EnableUI(false);
+            UpdateUIEnabledState();
 
             Application.Idle += new EventHandler(Application_Idle);
         }
@@ -221,11 +222,18 @@ namespace LH.Apps.RajceDownloader
 
         #endregion
 
+        /// <summary>
+        /// Application.Idle event handler. Updates the UI state.
+        /// </summary>
         private void Application_Idle(object sender, EventArgs e)
         {
             UpdateUIEnabledState();
         }
 
+        /// <summary>
+        /// Updates the Enabled properties of the controls to reflect the current state of the application.
+        /// </summary>
+        /// <remarks>Can be called from any thread, contains internal synchronization.</remarks>
         private void UpdateUIEnabledState()
         {
             MethodInvoker sync = delegate()
@@ -244,14 +252,11 @@ namespace LH.Apps.RajceDownloader
                 sync();
         }
 
-        private void EnableUI(bool busy)
-        {
-            startDownloadButton.Enabled = !busy;
-            abortButton.Enabled = busy;
-            pageURLTextBox.Enabled = !busy;
-        }
-
-        private void startDownloadButton_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Verifies the input parameters entered by the user.
+        /// </summary>
+        /// <returns>True if the download can be started, false otherwise.</returns>
+        private bool VerifyInputs()
         {
             if (pageURLTextBox.Tag != null)
             {
@@ -264,7 +269,7 @@ namespace LH.Apps.RajceDownloader
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Warning
                         );
-                    return;
+                    return false;
                 }
 
                 if (!Directory.Exists(targetDir))
@@ -275,7 +280,6 @@ namespace LH.Apps.RajceDownloader
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Question
                         );
-
                     switch (dr)
                     {
                         case DialogResult.Yes:
@@ -294,19 +298,16 @@ namespace LH.Apps.RajceDownloader
                                     MessageBoxButtons.OK,
                                     MessageBoxIcon.Error
                                     );
+                                return false;
                             }
                             break;
 
                         case DialogResult.No:
-                            return;                            
+                            return false;
                     }
                 }
 
-                pageParser = new PageParser(pageURLTextBox.Text);
-                pageParser.Finished += new EventHandler(pageParser_Finished);
-                pageParser.BeginDownloadAndParse();
-                abortible = pageParser;
-                UpdateUIEnabledState();
+                return true;
             }
             else
             {
@@ -316,9 +317,77 @@ namespace LH.Apps.RajceDownloader
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                     );
+                return false;
             }
         }
 
+        /// <summary>
+        /// Aborts the operation.
+        /// </summary>
+        private void abortButton_Click(object sender, EventArgs e)
+        {
+            if (abortible != null)
+                abortible.Abort();
+        }
+
+        /// <summary>
+        /// Verifies the input parameters and starts the download.
+        /// </summary>
+        private void startDownloadButton_Click(object sender, EventArgs e)
+        {
+            if (VerifyInputs())
+            {
+                pageParser = new PageParser(pageURLTextBox.Text);
+                pageParser.Finished += new EventHandler(pageParser_Finished);
+                pageParser.BeginDownloadAndParse();
+                abortible = pageParser;
+                UpdateUIEnabledState();
+            }
+        }
+
+        /// <summary>
+        /// Displays targetDirDialog to let the user choose the target dialog.
+        /// </summary>
+        private void selectTargetDirButton_Click(object sender, EventArgs e)
+        {
+            if (targetDirDialog.ShowDialog() == DialogResult.OK)
+                targetDirTextBox.Text = targetDirDialog.SelectedPath;
+        }
+
+        /// <summary>
+        /// Clears pageURLTextBox and sets its font to normal on first enter.
+        /// </summary>
+        private void pageURLTextBox_Enter(object sender, EventArgs e)
+        {
+            if (pageURLTextBox.Tag == null)
+            {
+                pageURLTextBox.ForeColor = SystemColors.WindowText;
+                pageURLTextBox.Font = Font;
+                pageURLTextBox.Text = string.Empty;
+                pageURLTextBox.Tag = new object();
+            }
+        }
+
+        /// <summary>
+        /// Opens the website on click on the logo.
+        /// </summary>
+        private void rajceLogo_Click(object sender, EventArgs e)
+        {
+            Process.Start("http://rajce.idnes.cz/");
+        }
+
+        /// <summary>
+        /// Called when the photos has been downloaded.
+        /// </summary>
+        private void downloader_Finished(object sender, EventArgs e)
+        {
+            abortible = null;
+            UpdateUIEnabledState();
+        }
+
+        /// <summary>
+        /// Called when the album page has been downloaded and parsed.
+        /// </summary>
         private void pageParser_Finished(object sender, EventArgs e)
         {
             abortible = null;
@@ -337,40 +406,6 @@ namespace LH.Apps.RajceDownloader
                 downloader.BeginDownload();
             }
             UpdateUIEnabledState();
-        }
-
-        private void downloader_Finished(object sender, EventArgs e)
-        {
-            abortible = null;
-            UpdateUIEnabledState();
-        }
-
-        private void abortButton_Click(object sender, EventArgs e)
-        {
-            if (abortible != null)
-                abortible.Abort();
-        }
-
-        private void pageURLTextBox_Enter(object sender, EventArgs e)
-        {
-            if (pageURLTextBox.Tag == null)
-            {
-                pageURLTextBox.ForeColor = SystemColors.WindowText;
-                pageURLTextBox.Font = Font;
-                pageURLTextBox.Text = string.Empty;
-                pageURLTextBox.Tag = new object();
-            }
-        }
-
-        private void rajceLogo_Click(object sender, EventArgs e)
-        {
-            System.Diagnostics.Process.Start("http://rajce.idnes.cz/");
-        }
-
-        private void selectTargetDirButton_Click(object sender, EventArgs e)
-        {
-            if (targetDirDialog.ShowDialog() == DialogResult.OK)
-                targetDirTextBox.Text = targetDirDialog.SelectedPath;
         }
     }
 }
